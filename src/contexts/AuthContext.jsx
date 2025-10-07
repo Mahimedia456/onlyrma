@@ -1,69 +1,125 @@
 // src/contexts/AuthContext.jsx
-import { createContext, useState, useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getSession as apiGetSession, login as apiLogin, logout as apiLogout } from "@/lib/zdClient";
+import { createContext, useContext, useEffect, useState } from "react";
 
-const AuthContext = createContext();
+const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [subdomain, setSubdomain] = useState(null);
-  const navigate = useNavigate();
+  const [state, setState] = useState({
+    loading: true,
+    isLoggedIn: false,
+    user: null,
+    subdomain: "",
+    role: localStorage.getItem("role") || "admin",
+  });
 
-  // Check session on first load/refresh
+  // On mount, try server session; if none, fall back to localStorage for viewer
   useEffect(() => {
-    let alive = true;
     (async () => {
       try {
-        setAuthLoading(true);
-        const data = await apiGetSession(); // GET /api/session
-        if (!alive) return;
-        setIsLoggedIn(true);
-        setUser(data.user || null);
-        setSubdomain(data.subdomain || null);
-      } catch {
-        if (!alive) return;
-        setIsLoggedIn(false);
-        setUser(null);
-        setSubdomain(null);
-      } finally {
-        if (alive) setAuthLoading(false);
-      }
+        const r = await fetch("/api/session", { credentials: "include" });
+        if (r.ok) {
+          const d = await r.json();
+          setState({
+            loading: false,
+            isLoggedIn: true,
+            user: d.user || null,
+            subdomain: d.subdomain || "",
+            role: d.role || "admin",
+          });
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("zdUser", JSON.stringify(d.user || {}));
+          localStorage.setItem("zdSubdomain", d.subdomain || "");
+          localStorage.setItem("role", d.role || "admin");
+          return;
+        }
+      } catch {}
+      // fallback: local viewer stored creds
+      const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+      const role = localStorage.getItem("role") || "admin";
+      const user = JSON.parse(localStorage.getItem("zdUser") || "null");
+      const subdomain = localStorage.getItem("zdSubdomain") || "";
+      setState({
+        loading: false,
+        isLoggedIn,
+        user,
+        subdomain,
+        role,
+      });
     })();
-    return () => { alive = false; };
   }, []);
 
-  // Call server /api/login, then set state
-  const login = async ({ email, token, subdomain }) => {
-    const resp = await apiLogin({ email, token, subdomain }); // POST /api/login
-    setIsLoggedIn(true);
-    setUser(resp.user || null);
-    setSubdomain(resp.subdomain || null);
-    // small UX hint in localStorage (not security)
+  // Zendesk login (existing flow)
+  async function login({ email, token, subdomain }) {
+    const r = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, token, subdomain }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d?.ok) {
+      throw new Error(d?.error || "Login failed");
+    }
     localStorage.setItem("isLoggedIn", "true");
-  };
+    localStorage.setItem("zdUser", JSON.stringify(d.user || {}));
+    localStorage.setItem("zdSubdomain", d.subdomain || "");
+    localStorage.setItem("role", d.role || "admin");
+    setState({
+      loading: false,
+      isLoggedIn: true,
+      user: d.user,
+      subdomain: d.subdomain || "",
+      role: d.role || "admin",
+    });
+  }
 
-  // Call server /api/logout, clear client state
-  const logout = async () => {
-    try { await apiLogout(); } catch {}
-    setIsLoggedIn(false);
-    setUser(null);
-    setSubdomain(null);
+  // Viewer login (new)
+  async function loginViewer({ email, password }) {
+    const r = await fetch("/api/viewer-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d?.ok) {
+      throw new Error(d?.error || "Viewer login failed");
+    }
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("zdUser", JSON.stringify(d.user || { email }));
+    localStorage.setItem("zdSubdomain", d.subdomain || "");
+    localStorage.setItem("role", d.role || "viewer");
+    setState({
+      loading: false,
+      isLoggedIn: true,
+      user: d.user || { email },
+      subdomain: d.subdomain || "",
+      role: d.role || "viewer",
+    });
+  }
+
+  async function logout() {
+    try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch {}
     localStorage.removeItem("isLoggedIn");
-    navigate("/login");
-  };
+    localStorage.removeItem("zdUser");
+    localStorage.removeItem("zdSubdomain");
+    localStorage.removeItem("role");
+    setState({
+      loading: false,
+      isLoggedIn: false,
+      user: null,
+      subdomain: "",
+      role: "admin",
+    });
+  }
 
   return (
-    <AuthContext.Provider
-      value={{ isLoggedIn, authLoading, user, subdomain, login, logout, setIsLoggedIn }}
-    >
+    <AuthCtx.Provider value={{ ...state, login, loginViewer, logout }}>
       {children}
-    </AuthContext.Provider>
+    </AuthCtx.Provider>
   );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  return useContext(AuthCtx);
 }
