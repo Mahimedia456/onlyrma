@@ -120,25 +120,7 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
                 </div>
               )}
 
-              {/* 4) Products / Orders */}
-              <button onClick={() => go("products")} className="w-full flex justify-between items-center px-3 py-2 rounded hover:bg-gray-100">
-                Products <FiChevronRight className="text-black" />
-              </button>
-              <button onClick={() => go("orders")} className="w-full flex justify-between items-center px-3 py-2 rounded hover:bg-gray-100">
-                Orders <FiChevronRight className="text-black" />
-              </button>
-
-              {/* 5) Backup & Restore */}
-              <button onClick={handleMainBackup} className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-100">
-                <span className="font-medium">Backup &amp; Restore</span>
-                {backupOpen ? <FiChevronDown className="text-black" /> : <FiChevronRight className="text-black" />}
-              </button>
-              {backupOpen && (
-                <div className="ml-2 pl-4 border-l border-gray-200 space-y-1 py-1">
-                  <button onClick={() => go("backup:get")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Get backup from Zendesk</button>
-                  <button onClick={() => go("backup:restore")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Restore backup from DB</button>
-                </div>
-              )}
+         
             </>
           )}
         </nav>

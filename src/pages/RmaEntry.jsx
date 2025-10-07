@@ -1,5 +1,5 @@
 // src/pages/RmaEntry.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const CATEGORIES = ["product-fault", "warranty", "out-of-warranty", "other"];
 const ORGS = ["US", "EMEA"];
@@ -76,6 +76,47 @@ const STOCK_TYPES_EMEA = [
   "Awaiting Delivery from User","Receiving Only","Awaiting Return from Rush",
 ];
 
+// --- STOCK default forms (by org) ---
+const STOCK_DEFAULT_US = {
+  d_stock_received: 0,
+  b_stock_received: 0,
+  new_stock_sent: 0,
+  rma_bstock_rstock_sent: 0,
+  a_stock_received: 0,
+  awaiting_delivery_from_user: 0,
+  receive_only: 0,
+  awaiting_return_from_rush: 0,
+  notes: "",
+};
+
+const STOCK_DEFAULT_EMEA = {
+  d_stock_received: 0, // label differs only ("D Stock - Received")
+  b_stock_received: 0, // label "B-stock Received"
+  new_stock_sent: 0,
+  rma_bstock_rstock_sent: 0,
+  awaiting_delivery_from_user: 0,
+  receiving_only: 0,
+  awaiting_return_from_rush: 0,
+  notes: "",
+};
+
+// date → YYYY-MM for stock tables
+function toMonth(v) {
+  const d = typeof v === "string" ? new Date(v) : v instanceof Date ? v : null;
+  if (!d || isNaN(d.getTime())) return new Date().toISOString().slice(0, 7);
+  return d.toISOString().slice(0, 7);
+}
+
+// coerce numeric-like strings to numbers
+function numberizeAll(obj) {
+  const out = { ...obj };
+  for (const k of Object.keys(out)) {
+    const v = out[k];
+    if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) out[k] = Number(v);
+  }
+  return out;
+}
+
 /** Ensure date is "YYYY-MM-DD" for <input type="date"> */
 function fmtDate(v) {
   if (!v) return "";
@@ -143,6 +184,11 @@ function RmaLists({ refreshKey }) {
   const [filters, setFilters] = useState({ month: "", category: "" });
   const [editRow, setEditRow] = useState(null);
 
+  // import state
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const fileRef = useRef(null);
+
   // fetch list
   useEffect(() => {
     (async () => {
@@ -153,7 +199,7 @@ function RmaLists({ refreshKey }) {
           category: filters.category || "",
         });
         const res = await fetch(`${API}/api/rma/entries?${qs.toString()}`, { credentials: "include" });
-        const data = await res.json();
+        const data = await safeJson(res);
         setRows(data?.entries || []);
       } catch (e) {
         console.error("entries fetch failed", e);
@@ -176,23 +222,116 @@ function RmaLists({ refreshKey }) {
     return m;
   }, [rows]);
 
-  function exportCSV() {
-    if (!rows.length) return alert("No rows to export.");
-    const cols = [
-      "id","entry_date","rma_no","ticket_id","first_name","last_name","email","phone","company",
-      "reseller_customer","address1","address2","city","state","country","postcode",
-      "product_with_fault","serial_number","product_sku","device_name",
-      "category","rma_type","stock_type","quantity","returned_reason","action",
-      "custom_tracking","replacement_tracking","created_at","updated_at"
-    ];
-    const header = cols.join(",");
-    const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
-    const csv = "\uFEFF" + [header, ...lines].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const name = `RMA_Entries_${filters.month || "all"}.csv`;
-    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 0);
+  /* ---------- EXPORT (server so headers match template) ---------- */
+  async function exportCSV() {
+    const qs = new URLSearchParams({
+      month: filters.month || "",
+      category: filters.category || "",
+    });
+    const a = document.createElement("a");
+    a.href = `${API}/api/rma/entries/export.csv?${qs.toString()}`;
+    a.download = `RMA_Entries_${filters.month || "all"}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  /* ---------- TEMPLATE DOWNLOAD ---------- */
+  function downloadTemplate() {
+    const a = document.createElement("a");
+    a.href = `${API}/api/rma/entries/template.csv`;
+    a.download = "rma_entries_template.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  /* ---------- IMPORT (CSV with your headers) ---------- */
+  function openImportDialog() {
+    setImportMsg("");
+    fileRef.current?.click();
+  }
+
+  async function handleImportFile(e) {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // allow picking same file twice
+    if (!f) return;
+
+    try {
+      setImporting(true);
+      setImportMsg("Reading file…");
+      const text = await f.text();
+
+      const { headers, records } = parseCsv(text);
+      if (!headers.length || !records.length) {
+        setImportMsg("No data found in CSV.");
+        setImporting(false);
+        return;
+      }
+
+      // Build mapping from YOUR headers -> canonical DB keys
+      const h2c = HUMAN_TO_CANON; // exact header strings
+      // quick index header -> position
+      const idx = new Map(headers.map((h, i) => [h.trim(), i]));
+
+      const get = (row, header) => {
+        const pos = idx.get(header);
+        return pos == null ? "" : (row[pos] ?? "");
+      };
+
+      const items = records.map((rowObj) => {
+        const rowArr = headers.map((h) => rowObj[h] ?? "");
+        const obj = {};
+        for (const [human, canon] of Object.entries(h2c)) {
+          obj[canon] = get(rowArr, human);
+        }
+        // Transform/normalize (date, quantity, etc.)
+        obj.entry_date = fmtDate(obj.entry_date) || null;
+        const q = Number(obj.quantity || 0);
+        obj.quantity = Number.isFinite(q) && q > 0 ? q : 0;
+        return obj;
+      });
+
+      // send as JSON { items: [...] } — matches server route
+      setImportMsg(`Uploading ${items.length} row(s)…`);
+      const res = await fetch(`${API}/api/rma/entries/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ items }),
+      });
+      const data = await safeJson(res);
+
+      if (res.status === 207) {
+        const ok = data?.imported ?? 0;
+        const failed = data?.failed ?? 0;
+        setImportMsg(`Partial import: ${ok} imported, ${failed} failed (see console).`);
+        console.log("Import report:", data?.report);
+      } else if (!res.ok) {
+        throw new Error(data?.error || "Import failed");
+      } else {
+        setImportMsg(`Imported ${data?.imported ?? items.length} row(s) successfully.`);
+      }
+
+      // Refresh table
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          month: filters.month || "",
+          category: filters.category || "",
+        });
+        const r = await fetch(`${API}/api/rma/entries?${qs.toString()}`, { credentials: "include" });
+        const j = await safeJson(r);
+        setRows(j?.entries || []);
+      } finally {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setImportMsg(`Import failed: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
   }
 
   async function remove(id) {
@@ -217,7 +356,7 @@ function RmaLists({ refreshKey }) {
 
   return (
     <div className="space-y-4">
-      {/* Filters / export */}
+      {/* Filters / actions */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs mb-1">Month</label>
@@ -241,12 +380,57 @@ function RmaLists({ refreshKey }) {
             ))}
           </select>
         </div>
-        <div className="ml-auto">
-          <button onClick={exportCSV} className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800" disabled={loading}>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setFilters({ month: "", category: "" })}
+            className="rounded border px-3 py-2 hover:bg-gray-50"
+            disabled={loading || importing}
+          >
+            Clear filters
+          </button>
+
+          <button
+            onClick={exportCSV}
+            className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800"
+            disabled={loading || importing}
+          >
             Export CSV
           </button>
+
+          {!isViewer && (
+            <>
+              <button
+                onClick={downloadTemplate}
+                className="rounded border px-3 py-2 hover:bg-gray-50 disabled:opacity-60"
+                disabled={loading || importing}
+              >
+                Download Template (CSV)
+              </button>
+
+              <button
+                onClick={openImportDialog}
+                className="rounded border px-4 py-2 hover:bg-gray-50 disabled:opacity-60"
+                disabled={loading || importing}
+                title="Import RMA entries from a CSV file"
+              >
+                {importing ? "Importing…" : "Import CSV"}
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+            </>
+          )}
         </div>
       </div>
+
+      {importMsg && (
+        <div className="text-xs text-gray-600">{importMsg}</div>
+      )}
 
       {/* Month tiles */}
       <div className="grid md:grid-cols-3 gap-3">
@@ -298,8 +482,8 @@ function RmaLists({ refreshKey }) {
               <Th>Qty</Th>
               <Th>Returned Reason</Th>
               <Th>Action</Th>
-              <Th>Custom Tracking</Th>
-              <Th>Replacement Tracking</Th>
+              <Th>Customer Return Tracking</Th>
+              <Th>New Order #</Th>
               <Th>Actions</Th>
             </tr>
           </thead>
@@ -346,7 +530,7 @@ function RmaLists({ refreshKey }) {
                     >
                       View / Edit
                     </button>
-                    {!(localStorage.getItem("role") || "admin").toLowerCase().includes("viewer") && (
+                    {role !== "viewer" && (
                       <button className="text-red-600 hover:underline" onClick={() => remove(r.id)}>
                         Delete
                       </button>
@@ -408,6 +592,10 @@ function RmaForm({ onSaved }) {
     organization: "EMEA",
   });
 
+  // org-specific stock forms
+  const [stockUs, setStockUs] = useState({ ...STOCK_DEFAULT_US });
+  const [stockEmea, setStockEmea] = useState({ ...STOCK_DEFAULT_EMEA });
+
   // keep organization mirror
   useEffect(() => setForm((f) => ({ ...f, organization: org })), [org]);
 
@@ -424,7 +612,6 @@ function RmaForm({ onSaved }) {
   function commitSkuFromQuery() {
     const raw = skuQuery.trim();
     if (!raw) return;
-    // accept either "Name — CODE" or just CODE or just Name
     const codeMatch = raw.split("—").pop().trim();
     let code = "";
     if (SKU_BY_CODE.has(codeMatch)) code = codeMatch;
@@ -443,7 +630,7 @@ function RmaForm({ onSaved }) {
     if (!form.entry_date) return alert("Entry date is required");
     if (!form.device_name && !form.product_sku) return alert("Choose Device Name or Product SKU");
 
-    // ensure name is filled if SKU chosen
+    // ensure product name from SKU when not typed
     const nameFromSku = form.product_sku ? (SKU_BY_CODE.get(form.product_sku) || "") : "";
     const payload = {
       ...form,
@@ -457,13 +644,56 @@ function RmaForm({ onSaved }) {
       credentials: "include",
       body: JSON.stringify(payload),
     });
-    if (res.ok) {
-      alert("Saved");
-      onSaved?.();
-    } else {
+
+    if (!res.ok) {
       const err = await safeJson(res);
-      alert(`Save failed: ${err?.error || res.statusText}`);
+      return alert(`Save failed: ${err?.error || res.statusText}`);
     }
+
+    // Saved entry OK
+    alert("RMA Entry saved");
+
+    // If user wants, also post a stock row
+    const usingUs = org === "US";
+    const stock = usingUs ? { ...stockUs } : { ...stockEmea };
+
+    // Only add if at least one numeric is non-zero OR notes present
+    const hasNumbers =
+      Object.entries(stock).some(([k,v]) => k !== "notes" && Number(v || 0) !== 0) ||
+      (stock.notes || "").trim() !== "";
+
+    if (hasNumbers) {
+      const doAdd = confirm(`Also add this to RMA Stock for ${org}?`);
+      if (doAdd) {
+        const month = toMonth(payload.entry_date); // YYYY-MM
+        const device_name = payload.device_name || "—";
+        const body = {
+          month,
+          device_name,
+          ...numberizeAll(stock),
+        };
+
+        const path = usingUs ? `${API}/api/rma/us/stock` : `${API}/api/rma/emea/stock`;
+        const sres = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+
+        if (!sres.ok) {
+          const derr = await safeJson(sres);
+          console.error("Stock save failed", derr);
+          alert("Stock save failed");
+        } else {
+          // reset mini stock form
+          usingUs ? setStockUs({ ...STOCK_DEFAULT_US }) : setStockEmea({ ...STOCK_DEFAULT_EMEA });
+        }
+      }
+    }
+
+    // done
+    onSaved?.();
   }
 
   return (
@@ -497,6 +727,48 @@ function RmaForm({ onSaved }) {
         <div>
           <div className="text-xs text-gray-600 mb-1">Quantity</div>
           <input type="number" className="border rounded px-3 py-2 w-28" value={form.quantity} onChange={update("quantity")} min={1} />
+        </div>
+      </div>
+
+      {/* --- Org-specific RMA Stock (inline) --- */}
+      <div className="rounded-xl border p-3 space-y-2">
+        <div className="text-sm font-semibold">RMA Stock (by Organization)</div>
+        {org === "US" ? (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Num label="D Stock Received" value={stockUs.d_stock_received} onChange={v=>setStockUs(s=>({...s,d_stock_received:v}))}/>
+            <Num label="B-Stock Received" value={stockUs.b_stock_received} onChange={v=>setStockUs(s=>({...s,b_stock_received:v}))}/>
+            <Num label="New Stock Sent" value={stockUs.new_stock_sent} onChange={v=>setStockUs(s=>({...s,new_stock_sent:v}))}/>
+            <Num label="RMA/ B-Stock R-Stock Sent" value={stockUs.rma_bstock_rstock_sent} onChange={v=>setStockUs(s=>({...s,rma_bstock_rstock_sent:v}))}/>
+            <Num label="A Stock - Received" value={stockUs.a_stock_received} onChange={v=>setStockUs(s=>({...s,a_stock_received:v}))}/>
+            <Num label="Awaiting Delivery from User" value={stockUs.awaiting_delivery_from_user} onChange={v=>setStockUs(s=>({...s,awaiting_delivery_from_user:v}))}/>
+            <Num label="Receive Only" value={stockUs.receive_only} onChange={v=>setStockUs(s=>({...s,receive_only:v}))}/>
+            <Num label="Awaiting Return from Rush" value={stockUs.awaiting_return_from_rush} onChange={v=>setStockUs(s=>({...s,awaiting_return_from_rush:v}))}/>
+            <div className="col-span-2 lg:col-span-3">
+              <label className="block text-xs text-gray-600 mb-1">Notes</label>
+              <input className="border rounded px-3 py-2 w-full"
+                value={stockUs.notes}
+                onChange={(e)=>setStockUs(s=>({...s,notes:e.target.value}))}/>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Num label="D Stock - Received" value={stockEmea.d_stock_received} onChange={v=>setStockEmea(s=>({...s,d_stock_received:v}))}/>
+            <Num label="B-stock Received" value={stockEmea.b_stock_received} onChange={v=>setStockEmea(s=>({...s,b_stock_received:v}))}/>
+            <Num label="New Stock Sent" value={stockEmea.new_stock_sent} onChange={v=>setStockEmea(s=>({...s,new_stock_sent:v}))}/>
+            <Num label="RMA/ B-Stock R-Stock Sent" value={stockEmea.rma_bstock_rstock_sent} onChange={v=>setStockEmea(s=>({...s,rma_bstock_rstock_sent:v}))}/>
+            <Num label="Awaiting Delivery from User" value={stockEmea.awaiting_delivery_from_user} onChange={v=>setStockEmea(s=>({...s,awaiting_delivery_from_user:v}))}/>
+            <Num label="Receiving Only" value={stockEmea.receiving_only} onChange={v=>setStockEmea(s=>({...s,receiving_only:v}))}/>
+            <Num label="Awaiting Return from Rush" value={stockEmea.awaiting_return_from_rush} onChange={v=>setStockEmea(s=>({...s,awaiting_return_from_rush:v}))}/>
+            <div className="col-span-2 lg:col-span-3">
+              <label className="block text-xs text-gray-600 mb-1">Notes</label>
+              <input className="border rounded px-3 py-2 w-full"
+                value={stockEmea.notes}
+                onChange={(e)=>setStockEmea(s=>({...s,notes:e.target.value}))}/>
+            </div>
+          </div>
+        )}
+        <div className="text-xs text-gray-500">
+          Tip: These are optional. If filled, you’ll be prompted to add them to the RMA Stock table after saving this entry.
         </div>
       </div>
 
@@ -684,9 +956,9 @@ function EditModal({ initial, onClose, onSave, readOnly = false }) {
           {input("Action", "action", form.action, update, "text", readOnly)}
 
           {/* Tracking */}
-          {input("Custom Tracking", "custom_tracking", form.custom_tracking, update, "text", readOnly)}
+          {input("Customer Return Tracking", "custom_tracking", form.custom_tracking, update, "text", readOnly)}
           {input("RMA No", "rma_no", form.rma_no, update, "text", readOnly)}
-          {input("Replacement Tracking", "replacement_tracking", form.replacement_tracking, update, "text", readOnly)}
+          {input("New Order #", "replacement_tracking", form.replacement_tracking, update, "text", readOnly)}
         </div>
 
         {!readOnly && (
@@ -696,7 +968,6 @@ function EditModal({ initial, onClose, onSave, readOnly = false }) {
               onClick={() =>
                 onSave({
                   ...form,
-                  // if SKU exists but name empty, auto-fill
                   product_with_fault: form.product_with_fault || (SKU_BY_CODE.get(form.product_sku) || ""),
                   entry_date: fmtDate(form.entry_date),
                   updated_at: new Date().toISOString(),
@@ -744,6 +1015,36 @@ function buildForm(initial) {
     category: initial.category || "",
   };
 }
+
+/* ---------- HUMAN HEADERS -> CANONICAL KEYS (for CSV import) ---------- */
+const HUMAN_TO_CANON = {
+  "Date": "entry_date",
+  "Ticket": "ticket_id",
+  "First Name": "first_name",
+  "Last Name": "last_name",
+  "Email": "email",
+  "Phone": "phone",
+  "Company (if Applicable)": "company",
+  "Reseller / Customer": "reseller_customer",
+  "Address 1": "address1",
+  "Address 2": "address2",
+  "City": "city",
+  "State (use 2 digit code)": "state",
+  "Country": "country",
+  "Post Code": "postcode",
+  "Product with fault": "product_with_fault",
+  "Serial Number of faulty product": "serial_number",
+  "Product SKU for replacement (no more ninja's without my approval)": "product_sku",
+  "Device Name": "device_name",
+  "RMA Type": "rma_type",
+  "Stock Type": "stock_type",
+  "Quantity": "quantity",
+  "Return Reason (Subject)": "returned_reason",
+  "Action": "action",
+  "Customer Return Tracking Number (REQUIRED)": "custom_tracking",
+  "RMA NO# (from RO)": "rma_no",
+  "New Order # (Dream) if Warranty Repalcement / Reshipment (from RO)": "replacement_tracking",
+};
 
 /* ---------- small helpers ---------- */
 function Section({ label, children }) {
@@ -837,4 +1138,50 @@ function csvEscape(val) {
 
 async function safeJson(res) {
   try { return await res.json(); } catch { return null; }
+}
+
+/* Robust CSV parser supporting quotes, commas, newlines in fields */
+function parseCsv(text) {
+  const rows = [];
+  let i = 0, cur = "", inQ = false, row = [];
+
+  const pushCell = () => { row.push(cur); cur = ""; };
+  const pushRow  = () => { rows.push(row); row = []; };
+
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i+1] === '"') { cur += '"'; i += 2; continue; } // escaped quote
+        inQ = false; i++; continue;
+      }
+      cur += ch; i++; continue;
+    }
+    if (ch === '"') { inQ = true; i++; continue; }
+    if (ch === ",") { pushCell(); i++; continue; }
+    if (ch === "\r") { i++; continue; }
+    if (ch === "\n") { pushCell(); pushRow(); i++; continue; }
+    cur += ch; i++;
+  }
+  pushCell(); if (row.length) pushRow();
+
+  const headers = (rows.shift() || []).map((h) => String(h || "").trim());
+  const records = rows
+    .filter(r => r.some(c => String(c).trim() !== ""))
+    .map(r => Object.fromEntries(headers.map((h, idx) => [h, r[idx] ?? ""])));
+  return { headers, records };
+}
+
+function Num({ label, value, onChange }) {
+  return (
+    <label className="block">
+      <div className="text-xs text-gray-600 mb-1">{label}</div>
+      <input
+        type="number"
+        className="border rounded px-3 py-2 w-full"
+        value={value}
+        onChange={(e)=>onChange(Number(e.target.value || 0))}
+      />
+    </label>
+  );
 }
