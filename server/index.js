@@ -928,8 +928,9 @@ app.delete('/api/rma/us/stock/:id', requireSession, requireAdmin, async (req, re
 // --- Start server ------------------------------------------------
 initMySQL()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`API server listening on http://localhost:${PORT}`);
+    app.listen(PORT, '127.0.0.1', () => {
+      console.log(`✅ API server listening on http://localhost:${PORT}`);
+      console.log(`CORS allowed origins: ${FRONTEND_ORIGIN}`);
     });
   })
   .catch((e) => {
