@@ -1,5 +1,6 @@
 // src/pages/RmaStock.jsx
 import { useEffect, useMemo, useState } from "react";
+import { apiUrl } from "@/lib/apiBase";
 
 const CATEGORY_OPTIONS = ["product-fault", "warranty", "out-of-warranty", "other"];
 const RMA_TYPE_OPTIONS = ["Warranty", "Out of Warranty", "Advance Replacement"];
@@ -25,7 +26,7 @@ export default function RmaStock() {
           month: filters.month,
           category: filters.category || "",
         });
-        const res = await fetch(`${API}/api/rma/entries?${qs.toString()}`, { credentials: "include" });
+        const res = await fetch(apiUrl(`/rma/entries?${qs.toString()}`), { credentials: "include" });
         const data = await res.json();
         const base = data?.entries || [];
         // client-side refine for rma_type/stock_type
@@ -69,7 +70,7 @@ export default function RmaStock() {
   const onSaveEdit = async (patch) => {
     if (!editRow) return;
     const id = editRow.id;
-    const res = await fetch(`${API}/api/rma/entries/${id}`, {
+    const res = await fetch(apiUrl(`/rma/entries/${id}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

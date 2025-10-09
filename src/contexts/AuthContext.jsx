@@ -1,5 +1,6 @@
 // src/contexts/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
+import { apiUrl } from "@/lib/apiBase";
 
 const AuthCtx = createContext(null);
 
@@ -8,74 +9,69 @@ export function AuthProvider({ children }) {
     loading: true,
     isLoggedIn: false,
     user: null,
-    subdomain: "",
-    role: localStorage.getItem("role") || "admin",
+    role: localStorage.getItem("role") || "admin", // "admin" | "viewer"
   });
 
-  // On mount, try server session; if none, fall back to localStorage for viewer
+  // On mount, try server session; if none, fall back to localStorage
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/session", { credentials: "include" });
+        const r = await fetch(apiUrl("/session"), { credentials: "include" });
         if (r.ok) {
           const d = await r.json();
           setState({
             loading: false,
-            isLoggedIn: true,
-            user: d.user || null,
-            subdomain: d.subdomain || "",
-            role: d.role || "admin",
+            isLoggedIn: !!d?.ok,
+            user: d?.user || null,
+            role: d?.role || "admin",
           });
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("zdUser", JSON.stringify(d.user || {}));
-          localStorage.setItem("zdSubdomain", d.subdomain || "");
-          localStorage.setItem("role", d.role || "admin");
-          return;
+          if (d?.ok) {
+            localStorage.setItem("isLoggedIn", "true");
+            localStorage.setItem("role", d.role || "admin");
+            localStorage.setItem("userEmail", d.user?.email || "");
+            return;
+          }
         }
       } catch {}
-      // fallback: local viewer stored creds
+      // fallback (client memory)
       const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
       const role = localStorage.getItem("role") || "admin";
-      const user = JSON.parse(localStorage.getItem("zdUser") || "null");
-      const subdomain = localStorage.getItem("zdSubdomain") || "";
+      const userEmail = localStorage.getItem("userEmail") || null;
       setState({
         loading: false,
         isLoggedIn,
-        user,
-        subdomain,
+        user: userEmail ? { email: userEmail } : null,
         role,
       });
     })();
   }, []);
 
-  // Zendesk login (existing flow)
-  async function login({ email, token, subdomain }) {
-    const r = await fetch("/api/login", {
+  // INTERNAL ADMIN LOGIN (hardcoded creds)
+  async function login({ email, password }) {
+    const r = await fetch(apiUrl("/internal-login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ email, token, subdomain }),
+      body: JSON.stringify({ email, password }),
     });
     const d = await r.json();
     if (!r.ok || !d?.ok) {
-      throw new Error(d?.error || "Login failed");
+      throw new Error(d?.error || "Internal login failed");
     }
     localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("zdUser", JSON.stringify(d.user || {}));
-    localStorage.setItem("zdSubdomain", d.subdomain || "");
-    localStorage.setItem("role", d.role || "admin");
+    localStorage.setItem("role", "admin");
+    localStorage.setItem("userEmail", d.user?.email || email);
     setState({
       loading: false,
       isLoggedIn: true,
-      user: d.user,
-      subdomain: d.subdomain || "",
-      role: d.role || "admin",
+      user: d.user || { email },
+      role: "admin",
     });
   }
 
-  // Viewer login (new)
+  // VIEWER LOGIN (Rush)
   async function loginViewer({ email, password }) {
-    const r = await fetch("/api/viewer-login", {
+    const r = await fetch(apiUrl("/viewer-login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -86,29 +82,25 @@ export function AuthProvider({ children }) {
       throw new Error(d?.error || "Viewer login failed");
     }
     localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("zdUser", JSON.stringify(d.user || { email }));
-    localStorage.setItem("zdSubdomain", d.subdomain || "");
-    localStorage.setItem("role", d.role || "viewer");
+    localStorage.setItem("role", "viewer");
+    localStorage.setItem("userEmail", d.user?.email || email);
     setState({
       loading: false,
       isLoggedIn: true,
       user: d.user || { email },
-      subdomain: d.subdomain || "",
-      role: d.role || "viewer",
+      role: "viewer",
     });
   }
 
   async function logout() {
-    try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch {}
+    try { await fetch(apiUrl("/logout"), { method: "POST", credentials: "include" }); } catch {}
     localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("zdUser");
-    localStorage.removeItem("zdSubdomain");
     localStorage.removeItem("role");
+    localStorage.removeItem("userEmail");
     setState({
       loading: false,
       isLoggedIn: false,
       user: null,
-      subdomain: "",
       role: "admin",
     });
   }

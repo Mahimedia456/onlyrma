@@ -936,4 +936,187 @@ initMySQL()
   .catch((e) => {
     console.error('MySQL init failed:', e);
     process.exit(1);
+  });// server.js  (use identical contents for api/index.js or backend/server.js)
+import express from "express";
+import path from "path";
+import compression from "compression";
+import morgan from "morgan";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+// --- our helpers (already in your repo) ---
+import {
+  getSessionFromCookie,
+  setSessionCookie,
+  clearSessionCookie,
+} from "./src/server-lib/cookies.js";
+import {
+  requireSession,
+  proxyZendesk,
+  doLogin as doZdLogin,
+} from "./src/server-lib/zd.js";
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const app = express();
+
+// ---- middleware
+app.set("trust proxy", true);        // good when behind proxies / vercel / nginx
+app.use(compression());
+app.use(morgan("dev"));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+/* =========================
+   Auth / Session Endpoints
+   ========================= */
+
+// POST /api/login  (Zendesk admin flow)
+app.post("/api/login", async (req, res) => {
+  try {
+    // Validates body, returns { email, token, subdomain }
+    const s = await doZdLogin(req, res);
+    if (!s) return; // doZdLogin already responded with an error
+
+    // Persist session (include role for UI)
+    const session = {
+      email: s.email,
+      token: s.token,
+      subdomain: s.subdomain,
+      role: "admin",
+      // Optionally: accessToken if you ever mint OAuth tokens
+    };
+    setSessionCookie(res, session);
+
+    // You can enrich with user payload if needed
+    res.json({
+      ok: true,
+      user: { email: s.email },
+      subdomain: s.subdomain,
+      role: "admin",
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "Login failed" });
+  }
+});
+
+// POST /api/viewer-login  (Restricted viewer flow)
+app.post("/api/viewer-login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ ok: false, error: "email and password required" });
+    }
+
+    // TODO: replace with your real viewer auth check
+    // For now accept any non-empty email/password:
+    const session = {
+      viewer: true,
+      role: "viewer",
+      user: { email },
+      // no Zendesk creds → this role can only see RMA Entry Lists per your UI
+    };
+    setSessionCookie(res, session);
+
+    res.json({
+      ok: true,
+      user: { email },
+      subdomain: "",
+      role: "viewer",
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || "Viewer login failed" });
+  }
+});
+
+// POST /api/logout
+app.post("/api/logout", (req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// GET /api/session
+app.get("/api/session", (req, res) => {
+  const s = getSessionFromCookie(req);
+  if (!s) return res.status(401).json({ error: "No session" });
+
+  // Normalize what the frontend expects
+  res.json({
+    user: s.user || (s.email ? { email: s.email } : null),
+    subdomain: s.subdomain || "",
+    role: s.role || (s.email ? "admin" : "viewer"),
   });
+});
+
+/* =========================
+   Zendesk Proxy
+   ========================= */
+
+// GET /api/zendesk?path=/api/v2/...
+app.get("/api/zendesk", async (req, res) => {
+  try {
+    const session = requireSession(req); // throws 401 if not admin (Zendesk creds missing)
+    const path = req.query.path;
+    if (!path) return res.status(400).json({ error: "Missing ?path=/api/v2/..." });
+
+    await proxyZendesk(req, res, session, path);
+  } catch (e) {
+    const status = e?.status || 500;
+    res.status(status).json({ error: e?.message || "Proxy error" });
+  }
+});
+
+/* =========================
+   RMA / Stock APIs
+   =========================
+   NOTE: Your frontend already calls endpoints like:
+   - /api/rma/entries
+   - /api/rma/entries/:id
+   - /api/rma/entries/import
+   - /api/rma/entries/export.csv
+   - /api/rma/entries/template.csv
+   - /api/rma/emea/devices
+   - /api/rma/emea/stock, /api/rma/emea/stock/:id
+   - /api/rma/us/devices
+   - /api/rma/us/stock, /api/rma/us/stock/:id
+
+   Mount your real routers here. If you already have them in your project,
+   import and app.use() them. Example:
+
+   import rmaEntriesRouter from "./api/rma/entries.js";
+   import rmaEmeaRouter from "./api/rma/emea.js";
+   import rmaUsRouter from "./api/rma/us.js";
+
+   app.use("/api/rma/entries", rmaEntriesRouter);
+   app.use("/api/rma/emea", rmaEmeaRouter);
+   app.use("/api/rma/us", rmaUsRouter);
+*/
+
+// If you don't have routers yet, you can leave this block as-is
+// because your existing backend likely already implements them elsewhere.
+
+/* =========================
+   Static File Hosting (Vite build)
+   ========================= */
+
+const DIST = resolve(__dirname, "dist");
+app.use(express.static(DIST, { index: false }));
+
+// SPA fallback: everything not /api/* goes to index.html
+app.get(/^\/(?!api).*/, (req, res) => {
+  res.sendFile(resolve(DIST, "index.html"));
+});
+
+/* =========================
+   Start server (LAN-friendly)
+   ========================= */
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`API listening on http://0.0.0.0:${PORT}`);
+  console.log(`If you're on Wi-Fi, teammates can reach: http://YOUR-IP:${PORT}`);
+});

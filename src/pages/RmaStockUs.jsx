@@ -1,5 +1,6 @@
 // src/pages/RmaStockUs.jsx
 import { useEffect, useMemo, useState } from "react";
+import { apiUrl } from "@/lib/apiBase";
 
 /** Lightweight session reader */
 function useSessionRoleInline() {
@@ -9,7 +10,7 @@ function useSessionRoleInline() {
     let alive = true;
     (async () => {
       try {
-        const r = await fetch("/api/session", { credentials: "include" });
+        const r = await fetch(apiUrl("/session"), { credentials: "include" });
         const d = await (async () => { try { return await r.json(); } catch { return null; } })();
         if (!alive) return;
         if (!r.ok) {
@@ -56,7 +57,7 @@ export default function RmaStockUs() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/api/rma/us/devices`, { credentials: "include" });
+        const res = await fetch(apiUrl(`/rma/us/devices`), { credentials: "include" });
         const data = await res.json();
         setDevices(res.ok ? (data?.devices || []) : []);
         if (!res.ok) console.error("US devices fetch failed", data);
@@ -73,7 +74,7 @@ export default function RmaStockUs() {
       setLoading(true);
       try {
         const qs = new URLSearchParams({ month, ...(device ? { device_name: device } : {}) });
-        const res = await fetch(`${API}/api/rma/us/stock?${qs.toString()}`, { credentials: "include" });
+        const res = await fetch(apiUrl(`/rma/us/stock?${qs.toString()}`), { credentials: "include" });
         const data = await res.json();
         setRows(res.ok ? (data?.items || []) : []);
         if (!res.ok) console.error("US stock fetch failed", data);
@@ -103,7 +104,7 @@ export default function RmaStockUs() {
   async function saveNew() {
     if (!device) return alert("Select a device");
     const payload = { month, device_name: device, ...numberize(form) };
-    const res = await fetch(`${API}/api/rma/us/stock`, {
+    const res = await fetch(apiUrl(`/rma/us/stock`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -114,7 +115,7 @@ export default function RmaStockUs() {
       console.error("US save failed", d);
       return alert("Save failed");
     }
-    const r = await fetch(`${API}/api/rma/us/stock?month=${encodeURIComponent(month)}`, { credentials: "include" });
+    const r = await fetch(apiUrl(`/rma/us/stock?month=${encodeURIComponent(month)}`), { credentials: "include" });
     const d = await r.json();
     setRows(d?.items || []);
     setForm(blank());
@@ -130,7 +131,7 @@ export default function RmaStockUs() {
   }
 
   async function updateRow(id, patch) {
-    const res = await fetch(`${API}/api/rma/us/stock/${id}`, {
+    const res = await fetch(apiUrl(`/rma/us/stock/${id}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -290,7 +291,7 @@ export default function RmaStockUs() {
                     className="text-red-600 hover:underline"
                     onClick={async () => {
                       if (!confirm("Delete row?")) return;
-                      const res = await fetch(`${API}/api/rma/us/stock/${r.id}`, { method: "DELETE", credentials: "include" });
+                      const res = await fetch(apiUrl(`/rma/us/stock/${r.id}`), { method: "DELETE", credentials: "include" });
                       if (res.ok) setRows((prev) => prev.filter((x) => x.id !== r.id));
                     }}
                   >

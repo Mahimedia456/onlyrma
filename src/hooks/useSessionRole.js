@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-
+import { apiUrl } from "@/lib/apiBase";
 /**
  * Reads session from /api/session and exposes { ready, role, user, error }.
  * - ready=false while loading

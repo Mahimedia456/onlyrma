@@ -1,5 +1,6 @@
 // src/pages/RmaEntry.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { apiUrl } from "@/lib/apiBase";
 
 const CATEGORIES = ["product-fault", "warranty", "out-of-warranty", "other"];
 const ORGS = ["US", "EMEA"];
@@ -198,7 +199,7 @@ function RmaLists({ refreshKey }) {
           month: filters.month || "",
           category: filters.category || "",
         });
-        const res = await fetch(`${API}/api/rma/entries?${qs.toString()}`, { credentials: "include" });
+        const res = await fetch(apiUrl(`/rma/entries?${qs.toString()}`), { credentials: "include" });
         const data = await safeJson(res);
         setRows(data?.entries || []);
       } catch (e) {
@@ -239,7 +240,7 @@ function RmaLists({ refreshKey }) {
   /* ---------- TEMPLATE DOWNLOAD ---------- */
   function downloadTemplate() {
     const a = document.createElement("a");
-    a.href = `${API}/api/rma/entries/template.csv`;
+    a.href = apiUrl(`/rma/entries/template.csv`);
     a.download = "rma_entries_template.csv";
     document.body.appendChild(a);
     a.click();
@@ -320,7 +321,7 @@ function RmaLists({ refreshKey }) {
           month: filters.month || "",
           category: filters.category || "",
         });
-        const r = await fetch(`${API}/api/rma/entries?${qs.toString()}`, { credentials: "include" });
+        const r = await fetch(apiUrl(`/rma/entries?${qs.toString()}`), { credentials: "include" });
         const j = await safeJson(r);
         setRows(j?.entries || []);
       } finally {
@@ -336,14 +337,14 @@ function RmaLists({ refreshKey }) {
 
   async function remove(id) {
     if (!confirm("Delete this RMA entry?")) return;
-    const res = await fetch(`${API}/api/rma/entries/${id}`, { method: "DELETE", credentials: "include" });
+    const res = await fetch(apiUrl(`/rma/entries/${id}`), { method: "DELETE", credentials: "include" });
     if (!res.ok) return alert("Delete failed");
     setRows(prev => prev.filter(r => r.id !== id));
   }
 
   async function saveEdit(id, patch) {
     const toSend = { ...patch, entry_date: fmtDate(patch.entry_date) || null };
-    const res = await fetch(`${API}/api/rma/entries/${id}`, {
+    const res = await fetch(apiUrl(`/rma/entries/${id}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -638,7 +639,7 @@ function RmaForm({ onSaved }) {
       entry_date: fmtDate(form.entry_date),
     };
 
-    const res = await fetch(`${API}/api/rma/entries`, {
+    const res = await fetch(apiUrl(`/rma/entries`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -673,7 +674,7 @@ function RmaForm({ onSaved }) {
           ...numberizeAll(stock),
         };
 
-        const path = usingUs ? `${API}/api/rma/us/stock` : `${API}/api/rma/emea/stock`;
+        const path = usingUs ? apiUrl(`/rma/us/stock`) : apiUrl(`/rma/emea/stock`);
         const sres = await fetch(path, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

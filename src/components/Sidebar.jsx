@@ -2,32 +2,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiChevronRight, FiChevronDown, FiX } from "react-icons/fi";
+import { apiUrl } from "@/lib/apiBase";
 
 export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = () => {} }) {
   const role = (localStorage.getItem("role") || "admin").toLowerCase();
   const isViewer = role === "viewer";
 
-  const [ticketsOpen, setTicketsOpen] = useState(!isViewer);
-  const [backupOpen, setBackupOpen] = useState(false);
   const [rmaOpen, setRmaOpen] = useState(true);
-  const [analyticsOpen, setAnalyticsOpen] = useState(!isViewer);
-
   const navigate = useNavigate();
 
   async function handleLogout() {
-    try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch {}
+    try { await fetch(apiUrl("/logout"), { method: "POST", credentials: "include" }); } catch {}
     localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("zdUser");
-    localStorage.removeItem("zdSubdomain");
     localStorage.removeItem("role");
+    localStorage.removeItem("userEmail");
     try { onLogout?.(); } catch {}
     navigate("/login");
   }
 
-  const handleMainTickets   = () => { onSelect("tickets");   onClose(); setTicketsOpen(v => !v);   };
-  const handleMainBackup    = () => { onSelect("backup");    onClose(); setBackupOpen(v => !v);    };
-  const handleMainRma       = () => { onSelect("rma");       onClose(); setRmaOpen(v => !v);       };
-  const handleMainAnalytics = () => { onSelect("analytics"); onClose(); setAnalyticsOpen(v => !v); };
+  const handleMainRma = () => { onSelect("rma"); onClose(); setRmaOpen(v => !v); };
   const go = (key) => { onSelect(key); onClose(); };
 
   return (
@@ -62,25 +55,7 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
         </div>
 
         <nav className="flex-1 space-y-1">
-          {/* 1) Zendesk Tickets (admins only) */}
-          {!isViewer && (
-            <>
-              <button onClick={handleMainTickets} className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-100">
-                <span className="font-medium">Zendesk Tickets</span>
-                {ticketsOpen ? <FiChevronDown className="text-black" /> : <FiChevronRight className="text-black" />}
-              </button>
-              {ticketsOpen && (
-                <div className="ml-2 pl-4 border-l border-gray-200 space-y-1 py-1">
-                  <button onClick={() => go("tickets:tech-help")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Tech help</button>
-                  <button onClick={() => go("tickets:data-recovery")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Data recovery</button>
-                  <button onClick={() => go("tickets:warranty-claim")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Warranty claim</button>
-                  <button onClick={() => go("tickets:general-support")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">General support</button>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* 2) RMA (always visible) — moved right after Zendesk Tickets */}
+          {/* RMA only */}
           <button onClick={handleMainRma} className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-100">
             <span className="font-medium">RMA</span>
             {rmaOpen ? <FiChevronDown className="text-black" /> : <FiChevronRight className="text-black" />}
@@ -104,24 +79,6 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
                 </>
               )}
             </div>
-          )}
-
-          {/* 3) Analytics (admins only) */}
-          {!isViewer && (
-            <>
-              <button onClick={handleMainAnalytics} className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-100">
-                <span className="font-medium">Analytics</span>
-                {analyticsOpen ? <FiChevronDown className="text-black" /> : <FiChevronRight className="text-black" />}
-              </button>
-              {analyticsOpen && (
-                <div className="ml-2 pl-4 border-l border-gray-200 space-y-1 py-1">
-                  <button onClick={() => go("analytics:csat")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Zendesk CSAT Dashboard</button>
-                  <button onClick={() => go("analytics:excel")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">Excel → Auto Dashboard</button>
-                </div>
-              )}
-
-         
-            </>
           )}
         </nav>
 

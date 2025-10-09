@@ -1,6 +1,6 @@
 // src/lib/zendesk.js
 export async function zdGet(path, init = {}) {
-  const url = `/api/zendesk?path=${encodeURIComponent(path)}`;
+  const url = apiUrl(`/zendesk?path=${encodeURIComponent(path)}`);
   const res = await fetch(url, {
     credentials: "include", // IMPORTANT: send session cookie to backend
     headers: { "X-Requested-With": "XMLHttpRequest", ...(init.headers || {}) },

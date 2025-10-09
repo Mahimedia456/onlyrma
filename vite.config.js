@@ -11,14 +11,16 @@ export default defineConfig({
   plugins: [react()],
   resolve: { alias: { '@': resolve(__dirname, 'src') } },
   server: {
+    host: true,               // allow LAN access
+    port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000', // use localhost to match the app origin
+        target: 'http://localhost:4000',
         changeOrigin: true,
         secure: false,
-        // these help ensure Set-Cookie makes sense in the browser
-        cookieDomainRewrite: 'localhost',
-        cookiePathRewrite: '/',
+        // IMPORTANT: make cookie host-only (works for localhost and 192.168.x.x)
+        cookieDomainRewrite: '',       // <— was 'localhost'
+        cookiePathRewrite: '/',        // keep path simple
       },
     },
   },

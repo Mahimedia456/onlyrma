@@ -7,17 +7,16 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, loginViewer } = useAuth();
 
-  const [tab, setTab] = useState("zendesk"); // "zendesk" | "rma"
-  const isZendesk = tab === "zendesk";
+  const [tab, setTab] = useState("internal"); // "internal" | "rma"
+  const isInternal = tab === "internal";
 
-  // Zendesk form
-  const [zd, setZd] = useState({
-    email: "alex@codered-tech.com",
-    token: "wwq0RELx5qj2ZxyFdocyMMdjaxTER6QL1ds0hGAZ",
-    subdomain: "software-6493",
+  // Internal admin form (hardcoded creds)
+  const [admin, setAdmin] = useState({
+    email: "internal@mahimedisolutions.com",
+    password: "mahimediasolutions",
   });
 
-  // RMA viewer form
+  // RMA viewer form (Rush)
   const [viewer, setViewer] = useState({
     email: "rush@mahimediasolutions.com",
     password: "aamirtest",
@@ -27,8 +26,8 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
 
   const title = useMemo(
-    () => (isZendesk ? "Sign in to Zendesk" : "RMA Login"),
-    [isZendesk]
+    () => (isInternal ? "RMA Internal Login" : "RMA Viewer Login"),
+    [isInternal]
   );
 
   async function handleSubmit(e) {
@@ -36,11 +35,10 @@ export default function LoginPage() {
     setErr("");
     setLoading(true);
     try {
-      if (isZendesk) {
+      if (isInternal) {
         await login({
-          email: zd.email.trim(),
-          token: zd.token.trim(),
-          subdomain: zd.subdomain.trim(),
+          email: admin.email.trim(),
+          password: admin.password,
         });
       } else {
         await loginViewer({
@@ -50,7 +48,7 @@ export default function LoginPage() {
       }
       navigate("/dashboard");
     } catch (e2) {
-      setErr(e2?.message || (isZendesk ? "Zendesk login failed" : "Viewer login failed"));
+      setErr(e2?.message || (isInternal ? "Internal login failed" : "Viewer login failed"));
     } finally {
       setLoading(false);
     }
@@ -61,11 +59,11 @@ export default function LoginPage() {
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
         {/* Tabs */}
         <div className="mb-6 inline-flex rounded-xl border overflow-hidden">
-          <TabButton active={isZendesk} onClick={() => setTab("zendesk")}>
-            Zendesk Login
+          <TabButton active={isInternal} onClick={() => setTab("internal")}>
+            RMA Internal Login
           </TabButton>
-          <TabButton active={!isZendesk} onClick={() => setTab("rma")}>
-            RMA Login
+          <TabButton active={!isInternal} onClick={() => setTab("rma")}>
+            RMA Viewer
           </TabButton>
         </div>
 
@@ -80,37 +78,26 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {isZendesk ? (
+          {isInternal ? (
             <>
-              <Field label="Zendesk Email">
+              <Field label="Email">
                 <input
                   type="email"
-                  value={zd.email}
-                  onChange={(e) => setZd((s) => ({ ...s, email: e.target.value }))}
+                  value={admin.email}
+                  onChange={(e) => setAdmin((s) => ({ ...s, email: e.target.value }))}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-200"
                   autoComplete="email"
                   required
                 />
               </Field>
 
-              <Field label="API Token" hint="Zendesk Admin → Apps and Integrations → APIs → Add API token.">
+              <Field label="Password">
                 <input
                   type="password"
-                  value={zd.token}
-                  onChange={(e) => setZd((s) => ({ ...s, token: e.target.value }))}
+                  value={admin.password}
+                  onChange={(e) => setAdmin((s) => ({ ...s, password: e.target.value }))}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-200"
                   autoComplete="current-password"
-                  required
-                />
-              </Field>
-
-              <Field label="Zendesk Subdomain" hint={`API base: https://${zd.subdomain || "your-subdomain"}.zendesk.com/api/v2`}>
-                <input
-                  type="text"
-                  value={zd.subdomain}
-                  onChange={(e) => setZd((s) => ({ ...s, subdomain: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-200"
-                  placeholder="e.g. software-6493"
                   required
                 />
               </Field>
@@ -149,7 +136,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-lg px-4 py-2 bg-black text-white hover:bg-gray-800 focus:ring-2 focus:ring-indigo-300 disabled:opacity-60"
           >
-            {loading ? "Signing in…" : isZendesk ? "Login & Connect" : "Login"}
+            {loading ? "Signing in…" : "Login"}
           </button>
         </form>
       </div>
