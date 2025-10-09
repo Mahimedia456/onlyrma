@@ -1,10 +1,8 @@
-// api/index.js
+// api/[[...all]].js
 // Minimal serverless API to satisfy /api/* endpoints used by the app.
 // NOTE: Memory-only store (non-persistent on Vercel).
 
-export const config = {
-  runtime: 'nodejs18.x'
-};
+export const config = { runtime: 'nodejs' };
 
 // ---- In-memory store (resets on cold start) ----
 let entries = [];      // RMA entries
@@ -22,10 +20,9 @@ function parseCookies(req) {
     return a;
   }, {});
 }
-function setCookie(res, name, value, { maxAge = 60 * 60 * 24 * 30, path = '/', httpOnly = true } = {}) {
+function setCookie(res, name, value, { maxAge = 60 * 60 * 24 * 30, path = '/', httpOnly = true, secure = true } = {}) {
   const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${path}`, `Max-Age=${maxAge}`, 'SameSite=Lax'];
-  // On Vercel HTTPS, mark Secure. Local previews still work.
-  parts.push('Secure');
+  if (secure) parts.push('Secure');     // Vercel is HTTPS; keep cookie secure
   if (httpOnly) parts.push('HttpOnly');
   res.setHeader('Set-Cookie', parts.join('; '));
 }
@@ -63,7 +60,6 @@ function methodNotAllowed(res) { send(res, 405, { error: 'Method Not Allowed' })
 async function handleSession(req, res) {
   const cookies = parseCookies(req);
   if (cookies.rma_sess === '1') {
-    // Return the internal admin session
     return send(res, 200, { ok: true, role: 'admin', user: { email: 'internal@mahimedisolutions.com' } });
   }
   send(res, 200, { ok: false });
@@ -71,10 +67,9 @@ async function handleSession(req, res) {
 
 async function handleInternalLogin(req, res) {
   if (req.method !== 'POST') return methodNotAllowed(res);
-  const body = await readBody(req);
-  const { email, password } = body || {};
+  const { email, password } = await readBody(req);
   if (email === 'internal@mahimedisolutions.com' && password === 'mahimediasolutions') {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true });
+    setCookie(res, 'rma_sess', '1', { httpOnly: true, secure: true });
     return send(res, 200, { ok: true, role: 'admin', user: { email } });
   }
   send(res, 401, { ok: false, error: 'Invalid credentials' });
@@ -82,18 +77,15 @@ async function handleInternalLogin(req, res) {
 
 async function handleViewerLogin(req, res) {
   if (req.method !== 'POST') return methodNotAllowed(res);
-  const body = await readBody(req);
-  const { email, password } = body || {};
-  // keep your rush login
+  const { email, password } = await readBody(req);
   if (email === 'rush@mahimediasolutions.com' && password) {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true });
+    setCookie(res, 'rma_sess', '1', { httpOnly: true, secure: true });
     return send(res, 200, { ok: true, role: 'viewer', user: { email } });
   }
   send(res, 401, { ok: false, error: 'Invalid viewer credentials' });
 }
 
-async function handleLogout(req, res) {
-  // expire cookie
+async function handleLogout(_req, res) {
   res.setHeader('Set-Cookie', 'rma_sess=; Path=/; Max-Age=0; SameSite=Lax; Secure; HttpOnly');
   send(res, 200, { ok: true });
 }
@@ -118,7 +110,6 @@ function filterByMonthCategory(list, url) {
 // RMA entries
 async function handleEntries(req, res) {
   if (!requireAuth(req, res)) return;
-
   if (req.method === 'GET') {
     const filtered = filterByMonthCategory(entries, req.url);
     return send(res, 200, { entries: filtered });
@@ -134,7 +125,6 @@ async function handleEntries(req, res) {
 
 async function handleEntriesId(req, res, id) {
   if (!requireAuth(req, res)) return;
-
   const idx = entries.findIndex(e => String(e.id) === String(id));
   if (idx === -1) return notFound(res);
 
@@ -150,11 +140,10 @@ async function handleEntriesId(req, res, id) {
   methodNotAllowed(res);
 }
 
-// Export CSV (simple)
+// Export CSV
 async function handleEntriesExport(req, res) {
   if (!requireAuth(req, res)) return;
   const list = filterByMonthCategory(entries, req.url);
-
   const cols = [
     'id','entry_date','rma_no','ticket_id','first_name','last_name','email','phone','company','reseller_customer',
     'address1','address2','city','state','country','postcode','product_with_fault','serial_number','product_sku',
@@ -167,7 +156,6 @@ async function handleEntriesExport(req, res) {
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   }).join(','));
   const csv = "\uFEFF" + [header, ...lines].join('\n');
-
   res.setHeader('Content-Disposition', 'attachment; filename="rma_entries.csv"');
   return send(res, 200, csv, 'text/csv; charset=utf-8');
 }
@@ -204,13 +192,12 @@ async function handleEntriesImport(req, res) {
   }
   const failed = items.length - imported;
   if (failed > 0) {
-    res.statusCode = 207; // multi-status/partial success
-    return send(res, 207, { imported, failed, report });
+    return send(res, 207, { imported, failed, report }); // 207 Multi-Status
   }
   return send(res, 200, { imported, failed: 0 });
 }
 
-// Stock (EMEA / US) — month/device filters
+// Stock (EMEA / US)
 function filterStock(list, url) {
   const u = new URL(url, 'http://x');
   const month = u.searchParams.get('month') || '';
@@ -224,7 +211,6 @@ function filterStock(list, url) {
 async function handleStockList(req, res, region) {
   if (!requireAuth(req, res)) return;
   const store = region === 'emea' ? emeaStock : usStock;
-
   if (req.method === 'GET') {
     const items = filterStock(store, req.url);
     return send(res, 200, { items });
@@ -264,12 +250,10 @@ async function handleStockDevices(_req, res, region) {
 
 // --------------- Main handler (router) ---------------
 export default async function handler(req, res) {
-  const { method, url } = req;
-  // All routes are under /api/*
-  const path = url.split('?')[0] || '';
+  const path = (req.url.split('?')[0] || '');
 
   // Auth/session
-  if (path === '/api/session' && method === 'GET') return handleSession(req, res);
+  if (path === '/api/session' && req.method === 'GET') return handleSession(req, res);
   if (path === '/api/internal-login') return handleInternalLogin(req, res);
   if (path === '/api/viewer-login') return handleViewerLogin(req, res);
   if (path === '/api/logout') return handleLogout(req, res);
