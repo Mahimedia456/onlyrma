@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18.17" },
+  "engines": { "node": "20.x" },
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
