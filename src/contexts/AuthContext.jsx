@@ -9,10 +9,11 @@ export function AuthProvider({ children }) {
     loading: true,
     isLoggedIn: false,
     user: null,
-    role: localStorage.getItem("role") || "admin", // "admin" | "viewer"
+    subdomain: "",
+    role: localStorage.getItem("role") || "admin",
   });
 
-  // On mount, try server session; if none, fall back to localStorage
+  // session on mount
   useEffect(() => {
     (async () => {
       try {
@@ -21,33 +22,31 @@ export function AuthProvider({ children }) {
           const d = await r.json();
           setState({
             loading: false,
-            isLoggedIn: !!d?.ok,
-            user: d?.user || null,
-            role: d?.role || "admin",
+            isLoggedIn: true,
+            user: d.user || null,
+            subdomain: "",
+            role: d.role || "admin",
           });
-          if (d?.ok) {
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("role", d.role || "admin");
-            localStorage.setItem("userEmail", d.user?.email || "");
-            return;
-          }
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("role", d.role || "admin");
+          return;
         }
       } catch {}
-      // fallback (client memory)
+      // fallback to local
       const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
       const role = localStorage.getItem("role") || "admin";
-      const userEmail = localStorage.getItem("userEmail") || null;
       setState({
         loading: false,
         isLoggedIn,
-        user: userEmail ? { email: userEmail } : null,
+        user: null,
+        subdomain: "",
         role,
       });
     })();
   }, []);
 
-  // INTERNAL ADMIN LOGIN (hardcoded creds)
-  async function login({ email, password }) {
+  // Internal admin login
+  async function loginInternal({ email, password }) {
     const r = await fetch(apiUrl("/internal-login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -55,21 +54,19 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password }),
     });
     const d = await r.json();
-    if (!r.ok || !d?.ok) {
-      throw new Error(d?.error || "Internal login failed");
-    }
+    if (!r.ok || !d?.ok) throw new Error(d?.error || "Internal login failed");
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("role", "admin");
-    localStorage.setItem("userEmail", d.user?.email || email);
     setState({
       loading: false,
       isLoggedIn: true,
       user: d.user || { email },
+      subdomain: "",
       role: "admin",
     });
   }
 
-  // VIEWER LOGIN (Rush)
+  // Rush viewer login
   async function loginViewer({ email, password }) {
     const r = await fetch(apiUrl("/viewer-login"), {
       method: "POST",
@@ -78,16 +75,14 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password }),
     });
     const d = await r.json();
-    if (!r.ok || !d?.ok) {
-      throw new Error(d?.error || "Viewer login failed");
-    }
+    if (!r.ok || !d?.ok) throw new Error(d?.error || "Viewer login failed");
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("role", "viewer");
-    localStorage.setItem("userEmail", d.user?.email || email);
     setState({
       loading: false,
       isLoggedIn: true,
       user: d.user || { email },
+      subdomain: "",
       role: "viewer",
     });
   }
@@ -96,17 +91,17 @@ export function AuthProvider({ children }) {
     try { await fetch(apiUrl("/logout"), { method: "POST", credentials: "include" }); } catch {}
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("role");
-    localStorage.removeItem("userEmail");
     setState({
       loading: false,
       isLoggedIn: false,
       user: null,
+      subdomain: "",
       role: "admin",
     });
   }
 
   return (
-    <AuthCtx.Provider value={{ ...state, login, loginViewer, logout }}>
+    <AuthCtx.Provider value={{ ...state, loginInternal, loginViewer, logout }}>
       {children}
     </AuthCtx.Provider>
   );

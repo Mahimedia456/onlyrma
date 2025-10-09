@@ -5,18 +5,18 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, loginViewer } = useAuth();
+  const { loginInternal, loginViewer } = useAuth();
 
-  const [tab, setTab] = useState("internal"); // "internal" | "rma"
+  const [tab, setTab] = useState("internal"); // "internal" | "viewer"
   const isInternal = tab === "internal";
 
-  // Internal admin form (hardcoded creds)
-  const [admin, setAdmin] = useState({
+  // Internal admin (full control)
+  const [internal, setInternal] = useState({
     email: "internal@mahimedisolutions.com",
     password: "mahimediasolutions",
   });
 
-  // RMA viewer form (Rush)
+  // Rush viewer (read-only)
   const [viewer, setViewer] = useState({
     email: "rush@mahimediasolutions.com",
     password: "aamirtest",
@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
 
   const title = useMemo(
-    () => (isInternal ? "RMA Internal Login" : "RMA Viewer Login"),
+    () => (isInternal ? "RMA Internal Login" : "Rush Viewer Login"),
     [isInternal]
   );
 
@@ -36,9 +36,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isInternal) {
-        await login({
-          email: admin.email.trim(),
-          password: admin.password,
+        await loginInternal({
+          email: internal.email.trim(),
+          password: internal.password,
         });
       } else {
         await loginViewer({
@@ -60,10 +60,10 @@ export default function LoginPage() {
         {/* Tabs */}
         <div className="mb-6 inline-flex rounded-xl border overflow-hidden">
           <TabButton active={isInternal} onClick={() => setTab("internal")}>
-            RMA Internal Login
+            RMA Internal
           </TabButton>
-          <TabButton active={!isInternal} onClick={() => setTab("rma")}>
-            RMA Viewer
+          <TabButton active={!isInternal} onClick={() => setTab("viewer")}>
+            Rush Viewer
           </TabButton>
         </div>
 
@@ -83,8 +83,8 @@ export default function LoginPage() {
               <Field label="Email">
                 <input
                   type="email"
-                  value={admin.email}
-                  onChange={(e) => setAdmin((s) => ({ ...s, email: e.target.value }))}
+                  value={internal.email}
+                  onChange={(e) => setInternal((s) => ({ ...s, email: e.target.value }))}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-200"
                   autoComplete="email"
                   required
@@ -94,8 +94,8 @@ export default function LoginPage() {
               <Field label="Password">
                 <input
                   type="password"
-                  value={admin.password}
-                  onChange={(e) => setAdmin((s) => ({ ...s, password: e.target.value }))}
+                  value={internal.password}
+                  onChange={(e) => setInternal((s) => ({ ...s, password: e.target.value }))}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-200"
                   autoComplete="current-password"
                   required
@@ -105,7 +105,7 @@ export default function LoginPage() {
           ) : (
             <>
               <p className="text-sm text-gray-600">
-                Use your <b>restricted</b> RMA login. This account can view <b>RMA Entry → Lists</b> only.
+                This account can view <b>RMA Entry → Lists</b> only.
               </p>
               <Field label="Email">
                 <input

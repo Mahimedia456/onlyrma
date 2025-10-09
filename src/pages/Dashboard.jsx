@@ -1,11 +1,10 @@
 // src/pages/Dashboard.jsx
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiMenu } from "react-icons/fi";
-
-import Sidebar from "../components/Sidebar";
+import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 
-// RMA pages only
+// RMA pages
 import RmaTickets from "@/pages/RmaTickets";
 import RmaEntry from "@/pages/RmaEntry";
 import RmaStockEmea from "@/pages/RmaStockEmea";
@@ -15,9 +14,8 @@ export default function Dashboard() {
   const role = useMemo(() => (localStorage.getItem("role") || "admin").toLowerCase(), []);
   const isViewer = role === "viewer";
 
-  const [view, setView] = useState("rma-entry"); // default to RMA Entry
+  const [view, setView] = useState(isViewer ? "rma-entry" : "rma-entry");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
   const { logout } = useAuth();
 
   useEffect(() => {
@@ -26,15 +24,10 @@ export default function Dashboard() {
 
   const handleSelect = (key) => {
     setSidebarOpen(false);
-    if (isViewer) {
-      setView("rma-entry");
-      return;
-    }
-    if (key === "rma:tickets") { setView("rma-tickets"); return; }
-    if (key === "rma:entry")   { setView("rma-entry");   return; }
-    if (key === "rma:emea")    { setView("rma-emea");    return; }
-    if (key === "rma:us")      { setView("rma-us");      return; }
-    setView("rma-entry");
+    if (key === "rma:entry") setView("rma-entry");
+    if (key === "rma:emea")  setView("rma-emea");
+    if (key === "rma:us")    setView("rma-us");
+    if (key === "rma:tickets") setView("rma-tickets");
   };
 
   return (
@@ -60,26 +53,10 @@ export default function Dashboard() {
         </div>
 
         {/* RMA pages only */}
-        {view === "rma-tickets" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <RmaTickets />
-          </div>
-        )}
-        {view === "rma-entry" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <RmaEntry />
-          </div>
-        )}
-        {view === "rma-emea" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <RmaStockEmea />
-          </div>
-        )}
-        {view === "rma-us" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <RmaStockUs />
-          </div>
-        )}
+        {view === "rma-entry"   && <div className="bg-white rounded-lg shadow-md p-4"><RmaEntry /></div>}
+        {!isViewer && view === "rma-emea"    && <div className="bg-white rounded-lg shadow-md p-4"><RmaStockEmea /></div>}
+        {!isViewer && view === "rma-us"      && <div className="bg-white rounded-lg shadow-md p-4"><RmaStockUs /></div>}
+        {!isViewer && view === "rma-tickets" && <div className="bg-white rounded-lg shadow-md p-4"><RmaTickets /></div>}
       </main>
     </div>
   );

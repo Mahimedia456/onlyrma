@@ -1,21 +1,18 @@
 // src/components/Sidebar.jsx
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiChevronRight, FiChevronDown, FiX } from "react-icons/fi";
-import { apiUrl } from "@/lib/apiBase";
+import { useState } from "react";
 
 export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = () => {} }) {
   const role = (localStorage.getItem("role") || "admin").toLowerCase();
   const isViewer = role === "viewer";
-
   const [rmaOpen, setRmaOpen] = useState(true);
   const navigate = useNavigate();
 
   async function handleLogout() {
-    try { await fetch(apiUrl("/logout"), { method: "POST", credentials: "include" }); } catch {}
+    try { await fetch("/api/logout", { method: "POST", credentials: "include" }); } catch {}
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("role");
-    localStorage.removeItem("userEmail");
     try { onLogout?.(); } catch {}
     navigate("/login");
   }
@@ -25,7 +22,6 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
 
   return (
     <>
-      {/* Mobile overlay */}
       <div
         onClick={onClose}
         className={`fixed inset-0 z-30 bg-black/40 md:hidden transition-opacity ${
@@ -43,7 +39,7 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
       >
         {/* Mobile header */}
         <div className="mb-4 flex items-center justify-between md:hidden">
-          <img src="../src/assets/atomosf.png" alt="atomos Logo" className="h-8" />
+          <img src="../src/assets/atomosf.png" alt="Logo" className="h-8" />
           <button onClick={onClose} className="rounded p-2 hover:bg-gray-100" aria-label="Close sidebar">
             <FiX />
           </button>
@@ -51,11 +47,10 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
 
         {/* Desktop logo */}
         <div className="hidden md:flex items-center justify-center mb-4">
-          <img src="../src/assets/atomosf.png" alt="atomos Logo" className="h-8" />
+          <img src="../src/assets/atomosf.png" alt="Logo" className="h-8" />
         </div>
 
         <nav className="flex-1 space-y-1">
-          {/* RMA only */}
           <button onClick={handleMainRma} className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-100">
             <span className="font-medium">RMA</span>
             {rmaOpen ? <FiChevronDown className="text-black" /> : <FiChevronRight className="text-black" />}
@@ -82,7 +77,6 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
           )}
         </nav>
 
-        {/* Logout */}
         <button
           onClick={() => { handleLogout(); onClose(); }}
           className="mt-auto w-full flex justify-between items-center px-3 py-2 rounded bg-black text-white hover:bg-gray-800"
