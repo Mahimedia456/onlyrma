@@ -80,29 +80,44 @@ function toMonth(v) { // YYYY-MM
 
 // ------------------------ session cookie helpers ------------------------
 const COOKIE_NAME = "rma_sess";
-function buildCookieString(name, value, { maxAge, secure = true } = {}) {
+
+function buildCookieString(name, value, { maxAge, secure = true, httpOnly = true, sameSite = "Lax" } = {}) {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     "Path=/",
-    "HttpOnly",
-    "SameSite=Lax",
+    `SameSite=${sameSite}`
   ];
-  if (secure) parts.push("Secure");
   if (typeof maxAge === "number") parts.push(`Max-Age=${maxAge}`);
+  if (secure) parts.push("Secure");
+  if (httpOnly) parts.push("HttpOnly");
   return parts.join("; ");
 }
+
 function setSessionCookie(res, session, { maxDays = 30 } = {}) {
   const value = Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
   const maxAge = maxDays * 24 * 3600;
+  // Secure only on prod/Vercel (HTTPS)
   const isProd = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
-  const cookie = buildCookieString(COOKIE_NAME, value, { maxAge, secure: isProd });
+  const cookie = buildCookieString(COOKIE_NAME, value, {
+    maxAge,
+    secure: isProd,
+    httpOnly: true,
+    sameSite: "Lax",
+  });
   res.setHeader("Set-Cookie", cookie);
 }
+
 function clearSessionCookie(res) {
   const isProd = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
-  const cookie = buildCookieString(COOKIE_NAME, "", { maxAge: 0, secure: isProd });
+  const cookie = buildCookieString(COOKIE_NAME, "", {
+    maxAge: 0,
+    secure: isProd,
+    httpOnly: true,
+    sameSite: "Lax",
+  });
   res.setHeader("Set-Cookie", cookie);
 }
+
 function getSessionFromCookie(req) {
   const raw = (req.cookies || {})[COOKIE_NAME];
   if (!raw) return null;
@@ -147,7 +162,7 @@ app.post("/api/internal-login", async (req, res) => {
   const { email, password } = req.body || {};
   if (email?.toLowerCase() === "internal@mahimedisolutions.com" && password === "mahimediasolutions") {
     const session = { role: "admin", user: { email, name: "Internal Admin" }, source: "internal" };
-    setSessionCookie(res, session);
+    setSessionCookie(res, session, { maxDays: 30 });
     return res.json({ ok: true, role: "admin", user: session.user });
   }
   return res.status(401).json({ ok: false, error: "Invalid internal credentials" });
@@ -155,9 +170,9 @@ app.post("/api/internal-login", async (req, res) => {
 
 app.post("/api/viewer-login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (email?.toLowerCase() === "rush@mahimediasolutions.com" && password === "aamirtest") {
+  if (email?.toLowerCase() === "rush@mahimedisolutions.com" && password === "aamirtest") {
     const session = { role: "viewer", user: { email, name: "Rush Viewer" }, source: "viewer" };
-    setSessionCookie(res, session);
+    setSessionCookie(res, session, { maxDays: 30 });
     return res.json({ ok: true, role: "viewer", user: session.user });
   }
   return res.status(401).json({ ok: false, error: "Invalid viewer credentials" });
@@ -174,6 +189,16 @@ app.post("/api/logout", (req, res) => {
   return res.json({ ok: true });
 });
 
+// 🔁 refresh cookie expiry while user is active
+app.get("/api/session/refresh", requireAny, (req, res) => {
+  setSessionCookie(res, req.session, { maxDays: 30 });
+  return res.json({ ok: true, refreshed: true });
+});
+app.post("/api/session/refresh", requireAny, (req, res) => {
+  setSessionCookie(res, req.session, { maxDays: 30 });
+  return res.json({ ok: true, refreshed: true });
+});
+
 // ------------------------ RMA entries ------------------------
 // GET /api/rma/entries?month=YYYY-MM&category=
 app.get("/api/rma/entries", requireAny, async (req, res) => {
@@ -181,12 +206,8 @@ app.get("/api/rma/entries", requireAny, async (req, res) => {
   const category = (req.query.category || "").trim();
   const items = await readJson(ENTRIES_FILE);
   let entries = items;
-  if (month) {
-    entries = entries.filter(e => toMonth(e.entry_date || e.created_at) === month);
-  }
-  if (category) {
-    entries = entries.filter(e => (e.category || "") === category);
-  }
+  if (month) entries = entries.filter(e => toMonth(e.entry_date || e.created_at) === month);
+  if (category) entries = entries.filter(e => (e.category || "") === category);
   return res.json({ entries });
 });
 
@@ -365,7 +386,6 @@ function numberizeAll(obj) {
 
 // DEVICES (US)
 app.get("/api/rma/us/devices", requireAny, async (req, res) => {
-  // union of known DEVICE_NAMES and any device_name present in US stock
   const stock = await readJson(US_STOCK_FILE);
   const found = [...new Set(stock.map(s => s.device_name).filter(Boolean))];
   const devices = Array.from(new Set([...DEVICE_NAMES, ...found])).sort();

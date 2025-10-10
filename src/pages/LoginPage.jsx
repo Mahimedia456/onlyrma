@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
 
   const title = useMemo(
-    () => (isInternal ? "RMA Internal Login" : "Rush Viewer Login"),
+    () => (isInternal ? "RMA Internal Login" : "Rush Login"),
     [isInternal]
   );
 
@@ -104,9 +104,7 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-600">
-                This account can view <b>RMA Entry → Lists</b> only.
-              </p>
+              
               <Field label="Email">
                 <input
                   type="email"

@@ -1,4 +1,3 @@
-// src/components/Sidebar.jsx
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiChevronRight, FiChevronDown, FiX } from "react-icons/fi";
 import { useState } from "react";
@@ -68,9 +67,9 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
                   <button onClick={() => go("rma:us")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">
                     RMA Stock (US)
                   </button>
-                  <button onClick={() => go("rma:tickets")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">
-                    RMA Tickets
-                  </button>
+                 <button onClick={() => go("rma:product")} className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-100">
+RMA Products
+</button>
                 </>
               )}
             </div>

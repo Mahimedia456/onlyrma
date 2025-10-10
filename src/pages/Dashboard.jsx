@@ -1,14 +1,14 @@
-// src/pages/Dashboard.jsx
 import { useEffect, useMemo, useState } from "react";
 import { FiMenu } from "react-icons/fi";
 import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 
 // RMA pages
-import RmaTickets from "@/pages/RmaTickets";
 import RmaEntry from "@/pages/RmaEntry";
 import RmaStockEmea from "@/pages/RmaStockEmea";
 import RmaStockUs from "@/pages/RmaStockUs";
+import RmaProductsExplorer from "@/components/RmaProductsExplorer";
+
 
 export default function Dashboard() {
   const role = useMemo(() => (localStorage.getItem("role") || "admin").toLowerCase(), []);
@@ -24,10 +24,10 @@ export default function Dashboard() {
 
   const handleSelect = (key) => {
     setSidebarOpen(false);
-    if (key === "rma:entry") setView("rma-entry");
-    if (key === "rma:emea")  setView("rma-emea");
-    if (key === "rma:us")    setView("rma-us");
-    if (key === "rma:tickets") setView("rma-tickets");
+    if (key === "rma:entry")   setView("rma-entry");
+    if (key === "rma:emea")    setView("rma-emea");
+    if (key === "rma:us")      setView("rma-us");
+    if (key === "rma:product") setView("rma-product");
   };
 
   return (
@@ -52,11 +52,16 @@ export default function Dashboard() {
           <img src="https://www.angelbird.com/static/web/img/AB_Logo.svg" alt="Angelbird" className="h-6" />
         </div>
 
-        {/* RMA pages only */}
-        {view === "rma-entry"   && <div className="bg-white rounded-lg shadow-md p-4"><RmaEntry /></div>}
-        {!isViewer && view === "rma-emea"    && <div className="bg-white rounded-lg shadow-md p-4"><RmaStockEmea /></div>}
-        {!isViewer && view === "rma-us"      && <div className="bg-white rounded-lg shadow-md p-4"><RmaStockUs /></div>}
-        {!isViewer && view === "rma-tickets" && <div className="bg-white rounded-lg shadow-md p-4"><RmaTickets /></div>}
+        {/* RMA views */}
+        {view === "rma-entry"    && <div className="bg-white rounded-lg shadow-md p-4"><RmaEntry /></div>}
+        {!isViewer && view === "rma-emea"     && <div className="bg-white rounded-lg shadow-md p-4"><RmaStockEmea /></div>}
+        {!isViewer && view === "rma-us"       && <div className="bg-white rounded-lg shadow-md p-4"><RmaStockUs /></div>}
+        {!isViewer && view === "rma-products" && <div className="bg-white rounded-lg shadow-md p-4"><RmaProducts /></div>}
+        {!isViewer && view === "rma-product" && (
+<div className="bg-white rounded-lg shadow-md p-4">
+ <RmaProductsExplorer />
+ </div>
+)}
       </main>
     </div>
   );

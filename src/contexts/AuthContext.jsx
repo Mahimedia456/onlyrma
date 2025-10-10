@@ -32,7 +32,6 @@ export function AuthProvider({ children }) {
           return;
         }
       } catch {}
-      // fallback to local
       const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
       const role = localStorage.getItem("role") || "admin";
       setState({
@@ -45,7 +44,21 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
-  // Internal admin login
+  // 🔁 keep cookie alive while user is active
+  useEffect(() => {
+    if (!state.isLoggedIn) return;
+    const ping = () => fetch(apiUrl("/session/refresh"), { credentials: "include" }).catch(() => {});
+    const id = setInterval(ping, 10 * 60 * 1000); // every 10 minutes
+    const onFocus = () => ping();
+    window.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [state.isLoggedIn]);
+
   async function loginInternal({ email, password }) {
     const r = await fetch(apiUrl("/internal-login"), {
       method: "POST",
@@ -66,7 +79,6 @@ export function AuthProvider({ children }) {
     });
   }
 
-  // Rush viewer login
   async function loginViewer({ email, password }) {
     const r = await fetch(apiUrl("/viewer-login"), {
       method: "POST",

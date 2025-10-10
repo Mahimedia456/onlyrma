@@ -1,4 +1,3 @@
-// api/index.js
 // One-file serverless API for Vercel (Hobby plan friendly).
 // Memory-only (resets on cold start). No disk writes on Vercel.
 
@@ -36,27 +35,29 @@ function parseCookies(req) {
     return a;
   }, {});
 }
+
 function setCookie(res, name, value, {
   maxAgeDays = 30,
-  secure = false,
+  path = '/',
+  sameSite = 'Lax',
   httpOnly = true,
-  sameSite = 'Lax'
+  secure = process.env.NODE_ENV === 'production'
 } = {}) {
   const maxAge = maxAgeDays * 24 * 60 * 60;
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
-    `Path=/`,
+    `Path=${path}`,
     `Max-Age=${maxAge}`,
-    `SameSite=${sameSite}`
+    `SameSite=${sameSite}`,
   ];
   if (secure) parts.push('Secure');
   if (httpOnly) parts.push('HttpOnly');
   res.setHeader('Set-Cookie', parts.join('; '));
 }
 function clearCookie(res, name) {
-  res.setHeader(
-    'Set-Cookie',
-    `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure; HttpOnly`
+  const secure = process.env.NODE_ENV === 'production';
+  res.setHeader('Set-Cookie',
+    `${name}=; Path=/; Max-Age=0; SameSite=Lax; ${secure ? 'Secure; ' : ''}HttpOnly`
   );
 }
 
@@ -109,7 +110,12 @@ async function handleInternalLogin(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
   const { email, password } = await readBody(req);
   if (email?.toLowerCase() === 'internal@mahimedisolutions.com' && password === 'mahimediasolutions') {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true });
+    setCookie(res, 'rma_sess', '1', {
+      maxAgeDays: 30,
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'Lax'
+    });
     return ok(res, { ok: true, role: 'admin', user: { email } });
   }
   return send(res, 401, { ok: false, error: 'Invalid credentials' });
@@ -117,8 +123,13 @@ async function handleInternalLogin(req, res) {
 async function handleViewerLogin(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
   const { email, password } = await readBody(req);
-  if (email?.toLowerCase() === 'rush@mahimediasolutions.com' && password === 'aamirtest') {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true });
+  if (email?.toLowerCase() === 'rush@mahimedisolutions.com' && password === 'aamirtest') {
+    setCookie(res, 'rma_sess', '1', {
+      maxAgeDays: 30,
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'Lax'
+    });
     return ok(res, { ok: true, role: 'viewer', user: { email } });
   }
   return send(res, 401, { ok: false, error: 'Invalid viewer credentials' });
@@ -133,6 +144,20 @@ function handleSession(req, res) {
 function handleLogout(_req, res) {
   clearCookie(res, 'rma_sess');
   return ok(res, { ok: true });
+}
+// 🔁 refresh cookie expiry
+function handleSessionRefresh(req, res) {
+  const cookies = parseCookies(req);
+  if (cookies.rma_sess === '1') {
+    setCookie(res, 'rma_sess', '1', {
+      maxAgeDays: 30,
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'Lax'
+    });
+    return ok(res, { ok: true, refreshed: true });
+  }
+  return send(res, 401, { error: 'No session' });
 }
 
 // RMA entries
@@ -433,6 +458,7 @@ export default async function handler(req, res) {
   if (path === '/api/viewer-login')   return handleViewerLogin(req, res);
   if (path === '/api/session' && req.method === 'GET') return handleSession(req, res);
   if (path === '/api/logout')         return handleLogout(req, res);
+  if (path === '/api/session/refresh') return handleSessionRefresh(req, res);
 
   // rma entries
   if (path === '/api/rma/entries')                        return handleEntries(req, res);
