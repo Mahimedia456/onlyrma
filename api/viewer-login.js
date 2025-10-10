@@ -15,7 +15,6 @@ async function readBody(req) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
   const { email, password } = await readBody(req);
-  // keep Rush login as viewer
   if (email === 'rush@mahimediasolutions.com' && password) {
     setCookie(res, 'rma_sess', '1', { httpOnly: true });
     res.setHeader('Content-Type', 'application/json');
