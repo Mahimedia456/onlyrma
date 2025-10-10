@@ -1,16 +1,32 @@
-// api/[[...all]].js
-// Minimal serverless API to satisfy /api/* endpoints used by the app.
-// NOTE: Memory-only store (non-persistent on Vercel).
+// api/index.js
+// One-file serverless API for Vercel (Hobby plan friendly).
+// Memory-only (resets on cold start). No disk writes on Vercel.
 
 export const config = { runtime: 'nodejs' };
 
-// ---- In-memory store (resets on cold start) ----
-let entries = [];      // RMA entries
-let emeaStock = [];    // EMEA stock rows
-let usStock = [];      // US stock rows
-let nextId = 1;
+/* ---------------- In-memory stores ---------------- */
+let entries = [];   // RMA entries
+let emeaStock = []; // EMEA stock rows
+let usStock   = []; // US stock rows
 
-// Very-simple cookie helpers
+/* ---------------- Helpers ---------------- */
+function ok(res, body) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(body));
+}
+function send(res, status, body, type = 'application/json') {
+  res.statusCode = status;
+  res.setHeader('Content-Type', type);
+  res.end(type === 'application/json' ? JSON.stringify(body) : body);
+}
+function readBody(req) {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', c => (data += c));
+    req.on('end', () => { try { resolve(JSON.parse(data || '{}')); } catch { resolve({}); } });
+  });
+}
 function parseCookies(req) {
   const header = req.headers.cookie || '';
   return header.split(';').reduce((a, p) => {
@@ -20,30 +36,21 @@ function parseCookies(req) {
     return a;
   }, {});
 }
-function setCookie(res, name, value, { maxAge = 60 * 60 * 24 * 30, path = '/', httpOnly = true, secure = true } = {}) {
-  const parts = [`${name}=${encodeURIComponent(value)}`, `Path=${path}`, `Max-Age=${maxAge}`, 'SameSite=Lax'];
-  if (secure) parts.push('Secure');     // Vercel is HTTPS; keep cookie secure
+function setCookie(res, name, value, { maxAge = 60*60*24*30, path = '/', httpOnly = true } = {}) {
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Path=${path}`,
+    `Max-Age=${maxAge}`,
+    'SameSite=Lax',
+    'Secure'
+  ];
   if (httpOnly) parts.push('HttpOnly');
   res.setHeader('Set-Cookie', parts.join('; '));
 }
-
-function send(res, status, body, type = 'application/json') {
-  res.statusCode = status;
-  res.setHeader('Content-Type', type);
-  res.end(type === 'application/json' ? JSON.stringify(body) : body);
+function clearCookie(res, name) {
+  res.setHeader('Set-Cookie', `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure; HttpOnly`);
 }
-
-function readBody(req) {
-  return new Promise((resolve) => {
-    let data = '';
-    req.on('data', (c) => (data += c));
-    req.on('end', () => {
-      try { resolve(JSON.parse(data || '{}')); } catch { resolve({}); }
-    });
-  });
-}
-
-function requireAuth(req, res) {
+function requireAny(req, res) {
   const cookies = parseCookies(req);
   if (cookies.rma_sess !== '1') {
     send(res, 401, { error: 'Not authenticated' });
@@ -51,232 +58,391 @@ function requireAuth(req, res) {
   }
   return true;
 }
+function csvEscape(val) {
+  if (val === undefined || val === null) return '';
+  const s = String(val);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function toCSV(rows, columns) {
+  const header = columns.join(',');
+  const lines = rows.map(r => columns.map(c => csvEscape(r[c])).join(','));
+  return '\uFEFF' + [header, ...lines].join('\n');
+}
+function genId(prefix='id') {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+}
+function toMonth(v) { // YYYY-MM
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0,7);
+  return d.toISOString().slice(0,7);
+}
+function fmtDateISO(v) {
+  if (!v) return null;
+  try {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0,10);
+  } catch { return null; }
+}
+function numberizeAll(obj) {
+  const out = { ...obj };
+  for (const k of Object.keys(out)) {
+    const v = out[k];
+    if (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v))) out[k] = Number(v);
+  }
+  return out;
+}
 
-// --- Route helpers ---
-function notFound(res) { send(res, 404, { error: 'Not Found' }); }
-function methodNotAllowed(res) { send(res, 405, { error: 'Method Not Allowed' }); }
-
-// --- Handlers ---
-async function handleSession(req, res) {
+/* ---------------- Route handlers ---------------- */
+// Auth/session
+async function handleInternalLogin(req, res) {
+  if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
+  const { email, password } = await readBody(req);
+  if (email?.toLowerCase() === 'internal@mahimedisolutions.com' && password === 'mahimediasolutions') {
+    setCookie(res, 'rma_sess', '1', { httpOnly: true });
+    return ok(res, { ok: true, role: 'admin', user: { email } });
+  }
+  return send(res, 401, { ok: false, error: 'Invalid credentials' });
+}
+async function handleViewerLogin(req, res) {
+  if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
+  const { email, password } = await readBody(req);
+  if (email?.toLowerCase() === 'rush@mahimediasolutions.com' && password === 'aamirtest') {
+    setCookie(res, 'rma_sess', '1', { httpOnly: true });
+    return ok(res, { ok: true, role: 'viewer', user: { email } });
+  }
+  return send(res, 401, { ok: false, error: 'Invalid viewer credentials' });
+}
+function handleSession(req, res) {
   const cookies = parseCookies(req);
   if (cookies.rma_sess === '1') {
-    return send(res, 200, { ok: true, role: 'admin', user: { email: 'internal@mahimedisolutions.com' } });
+    return ok(res, { ok: true, role: 'admin', user: { email: 'internal@mahimedisolutions.com' } });
   }
-  send(res, 200, { ok: false });
+  return send(res, 401, { error: 'No session' });
 }
-
-async function handleInternalLogin(req, res) {
-  if (req.method !== 'POST') return methodNotAllowed(res);
-  const { email, password } = await readBody(req);
-  if (email === 'internal@mahimedisolutions.com' && password === 'mahimediasolutions') {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true, secure: true });
-    return send(res, 200, { ok: true, role: 'admin', user: { email } });
-  }
-  send(res, 401, { ok: false, error: 'Invalid credentials' });
-}
-
-async function handleViewerLogin(req, res) {
-  if (req.method !== 'POST') return methodNotAllowed(res);
-  const { email, password } = await readBody(req);
-  if (email === 'rush@mahimediasolutions.com' && password) {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true, secure: true });
-    return send(res, 200, { ok: true, role: 'viewer', user: { email } });
-  }
-  send(res, 401, { ok: false, error: 'Invalid viewer credentials' });
-}
-
-async function handleLogout(_req, res) {
-  res.setHeader('Set-Cookie', 'rma_sess=; Path=/; Max-Age=0; SameSite=Lax; Secure; HttpOnly');
-  send(res, 200, { ok: true });
-}
-
-function filterByMonthCategory(list, url) {
-  const u = new URL(url, 'http://x');
-  const month = u.searchParams.get('month') || '';
-  const category = u.searchParams.get('category') || '';
-  let out = list;
-  if (month) {
-    out = out.filter(r => {
-      const d = r.entry_date ? new Date(r.entry_date) : null;
-      if (!d || isNaN(d)) return false;
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      return ym === month;
-    });
-  }
-  if (category) out = out.filter(r => (r.category || '') === category);
-  return out;
+function handleLogout(_req, res) {
+  clearCookie(res, 'rma_sess');
+  return ok(res, { ok: true });
 }
 
 // RMA entries
 async function handleEntries(req, res) {
-  if (!requireAuth(req, res)) return;
+  if (!requireAny(req, res)) return;
   if (req.method === 'GET') {
-    const filtered = filterByMonthCategory(entries, req.url);
-    return send(res, 200, { entries: filtered });
+    const u = new URL(req.url, 'http://x');
+    const month = (u.searchParams.get('month') || '').trim();
+    const category = (u.searchParams.get('category') || '').trim();
+    let out = entries;
+    if (month) out = out.filter(e => toMonth(e.entry_date || e.created_at) === month);
+    if (category) out = out.filter(e => (e.category || '') === category);
+    return ok(res, { entries: out });
   }
   if (req.method === 'POST') {
     const body = await readBody(req);
-    const row = { ...body, id: nextId++, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    entries.push(row);
-    return send(res, 200, { ok: true, id: row.id });
+    const now = new Date().toISOString();
+    const entry = {
+      id: genId('rma'),
+      entry_date: fmtDateISO(body.entry_date) || now.slice(0,10),
+      ticket_id: body.ticket_id || '',
+      first_name: body.first_name || '',
+      last_name: body.last_name || '',
+      email: body.email || '',
+      phone: body.phone || '',
+      company: body.company || '',
+      reseller_customer: body.reseller_customer || '',
+      address1: body.address1 || '',
+      address2: body.address2 || '',
+      city: body.city || '',
+      state: body.state || '',
+      country: body.country || '',
+      postcode: body.postcode || '',
+      product_with_fault: body.product_with_fault || '',
+      serial_number: body.serial_number || '',
+      product_sku: body.product_sku || '',
+      device_name: body.device_name || '',
+      rma_type: body.rma_type || '',
+      stock_type: body.stock_type || '',
+      quantity: Number(body.quantity) || 0,
+      returned_reason: body.returned_reason || '',
+      action: body.action || '',
+      custom_tracking: body.custom_tracking || '',
+      rma_no: body.rma_no || '',
+      replacement_tracking: body.replacement_tracking || '',
+      category: body.category || '',
+      organization: body.organization || '',
+      created_at: now,
+      updated_at: now,
+    };
+    entries.push(entry);
+    return ok(res, { ok: true, entry });
   }
-  methodNotAllowed(res);
+  return send(res, 405, { error: 'Method Not Allowed' });
 }
-
-async function handleEntriesId(req, res, id) {
-  if (!requireAuth(req, res)) return;
-  const idx = entries.findIndex(e => String(e.id) === String(id));
-  if (idx === -1) return notFound(res);
+async function handleEntryId(req, res, id) {
+  if (!requireAny(req, res)) return;
+  const idx = entries.findIndex(e => e.id === id);
+  if (idx === -1) return send(res, 404, { error: 'Not found' });
 
   if (req.method === 'PUT') {
-    const body = await readBody(req);
-    entries[idx] = { ...entries[idx], ...body, updated_at: new Date().toISOString() };
-    return send(res, 200, { ok: true });
+    const patch = await readBody(req);
+    const merged = {
+      ...entries[idx],
+      ...patch,
+      entry_date: fmtDateISO(patch.entry_date) ?? entries[idx].entry_date,
+      updated_at: new Date().toISOString(),
+    };
+    entries[idx] = merged;
+    return ok(res, { ok: true, entry: merged });
   }
   if (req.method === 'DELETE') {
     entries.splice(idx, 1);
-    return send(res, 200, { ok: true });
+    return ok(res, { ok: true });
   }
-  methodNotAllowed(res);
+  return send(res, 405, { error: 'Method Not Allowed' });
 }
 
-// Export CSV
-async function handleEntriesExport(req, res) {
-  if (!requireAuth(req, res)) return;
-  const list = filterByMonthCategory(entries, req.url);
-  const cols = [
-    'id','entry_date','rma_no','ticket_id','first_name','last_name','email','phone','company','reseller_customer',
-    'address1','address2','city','state','country','postcode','product_with_fault','serial_number','product_sku',
-    'device_name','category','rma_type','stock_type','quantity','returned_reason','action','custom_tracking','replacement_tracking'
+// RMA entries export/template/import
+function handleEntriesTemplate(_req, res) {
+  const headers = [
+    'Date','Ticket','First Name','Last Name','Email','Phone','Company (if Applicable)','Reseller / Customer',
+    'Address 1','Address 2','City','State (use 2 digit code)','Country','Post Code',
+    'Product with fault','Serial Number of faulty product',"Product SKU for replacement (no more ninja's without my approval)",
+    'Device Name','RMA Type','Stock Type','Quantity','Return Reason (Subject)','Action',
+    'Customer Return Tracking Number (REQUIRED)','RMA NO# (from RO)','New Order # (Dream) if Warranty Repalcement / Reshipment (from RO)','Category','Organization'
   ];
-  const header = cols.join(',');
-  const lines = list.map(r => cols.map(c => {
-    const v = r[c] ?? '';
-    const s = String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  }).join(','));
-  const csv = "\uFEFF" + [header, ...lines].join('\n');
-  res.setHeader('Content-Disposition', 'attachment; filename="rma_entries.csv"');
+  const csv = '\uFEFF' + headers.join(',') + '\n';
+  res.setHeader('Content-Disposition', 'attachment; filename=rma_entries_template.csv');
   return send(res, 200, csv, 'text/csv; charset=utf-8');
 }
+function handleEntriesExport(req, res) {
+  if (!requireAny(req, res)) return;
+  const u = new URL(req.url, 'http://x');
+  const month = (u.searchParams.get('month') || '').trim();
+  const category = (u.searchParams.get('category') || '').trim();
+  let list = entries;
+  if (month) list = list.filter(e => toMonth(e.entry_date || e.created_at) === month);
+  if (category) list = list.filter(e => (e.category || '') === category);
 
-// Template CSV
-async function handleEntriesTemplate(_req, res) {
-  const header = [
-    'Date','Ticket','First Name','Last Name','Email','Phone','Company (if Applicable)','Reseller / Customer','Address 1','Address 2',
-    'City','State (use 2 digit code)','Country','Post Code','Product with fault','Serial Number of faulty product',
-    "Product SKU for replacement (no more ninja's without my approval)",'Device Name','RMA Type','Stock Type','Quantity',
-    'Return Reason (Subject)','Action','Customer Return Tracking Number (REQUIRED)','RMA NO# (from RO)',
-    'New Order # (Dream) if Warranty Repalcement / Reshipment (from RO)'
-  ].join(',');
-  return send(res, 200, header + '\n', 'text/csv; charset=utf-8');
+  const cols = [
+    'id','entry_date','rma_no','ticket_id','first_name','last_name','email','phone','company','reseller_customer',
+    'address1','address2','city','state','country','postcode','product_with_fault','serial_number',
+    'product_sku','device_name','category','rma_type','stock_type','quantity','returned_reason','action',
+    'custom_tracking','replacement_tracking','created_at','updated_at','organization'
+  ];
+  const csv = toCSV(list, cols);
+  res.setHeader('Content-Disposition', `attachment; filename=RMA_Entries_${month || 'all'}.csv`);
+  return send(res, 200, csv, 'text/csv; charset=utf-8');
 }
-
-// Import (partial success 207)
 async function handleEntriesImport(req, res) {
-  if (!requireAuth(req, res)) return;
-  if (req.method !== 'POST') return methodNotAllowed(res);
+  if (!requireAny(req, res)) return;
+  if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
   const { items = [] } = await readBody(req);
-
+  const now = new Date().toISOString();
   let imported = 0;
   const report = [];
+
   for (const raw of items) {
     try {
-      const row = { ...raw, id: nextId++, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-      entries.push(row);
+      const e = {
+        id: genId('rma'),
+        entry_date: fmtDateISO(raw.entry_date) || now.slice(0,10),
+        ticket_id: raw.ticket_id || '',
+        first_name: raw.first_name || '',
+        last_name: raw.last_name || '',
+        email: raw.email || '',
+        phone: raw.phone || '',
+        company: raw.company || '',
+        reseller_customer: raw.reseller_customer || '',
+        address1: raw.address1 || '',
+        address2: raw.address2 || '',
+        city: raw.city || '',
+        state: raw.state || '',
+        country: raw.country || '',
+        postcode: raw.postcode || '',
+        product_with_fault: raw.product_with_fault || '',
+        serial_number: raw.serial_number || '',
+        product_sku: raw.product_sku || '',
+        device_name: raw.device_name || '',
+        rma_type: raw.rma_type || '',
+        stock_type: raw.stock_type || '',
+        quantity: Number(raw.quantity) || 0,
+        returned_reason: raw.returned_reason || '',
+        action: raw.action || '',
+        custom_tracking: raw.custom_tracking || '',
+        rma_no: raw.rma_no || '',
+        replacement_tracking: raw.replacement_tracking || '',
+        category: raw.category || '',
+        organization: raw.organization || '',
+        created_at: now,
+        updated_at: now,
+      };
+      entries.push(e);
       imported++;
-      report.push({ ok: true, id: row.id });
-    } catch (e) {
-      report.push({ ok: false, error: e.message });
+      report.push({ ok: true, id: e.id });
+    } catch (err) {
+      report.push({ ok: false, error: err?.message || 'Unknown import error' });
     }
   }
   const failed = items.length - imported;
-  if (failed > 0) {
-    return send(res, 207, { imported, failed, report }); // 207 Multi-Status
-  }
-  return send(res, 200, { imported, failed: 0 });
+  if (failed > 0) return send(res, 207, { imported, failed, report });
+  return ok(res, { imported, failed: 0 });
 }
 
-// Stock (EMEA / US)
+// Stock: shared filters
 function filterStock(list, url) {
   const u = new URL(url, 'http://x');
-  const month = u.searchParams.get('month') || '';
-  const device = u.searchParams.get('device_name') || '';
+  const month = (u.searchParams.get('month') || '').trim();
+  const device = (u.searchParams.get('device_name') || '').trim();
   let out = list;
   if (month) out = out.filter(r => (r.month || '') === month);
   if (device) out = out.filter(r => (r.device_name || '') === device);
   return out;
 }
 
-async function handleStockList(req, res, region) {
-  if (!requireAuth(req, res)) return;
-  const store = region === 'emea' ? emeaStock : usStock;
+// EMEA stock
+async function handleEmeaStock(req, res) {
+  if (!requireAny(req, res)) return;
   if (req.method === 'GET') {
-    const items = filterStock(store, req.url);
-    return send(res, 200, { items });
+    const items = filterStock(emeaStock, req.url);
+    return ok(res, { items });
   }
   if (req.method === 'POST') {
-    const body = await readBody(req);
-    const row = { ...body, id: nextId++, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    store.push(row);
-    return send(res, 200, { ok: true, id: row.id });
+    const body = numberizeAll(await readBody(req));
+    const row = {
+      id: genId('emea'),
+      month: body.month || toMonth(new Date().toISOString()),
+      device_name: body.device_name || '—',
+      d_stock_received: Number(body.d_stock_received)||0,
+      b_stock_received: Number(body.b_stock_received)||0,
+      new_stock_sent: Number(body.new_stock_sent)||0,
+      rma_bstock_rstock_sent: Number(body.rma_bstock_rstock_sent)||0,
+      awaiting_delivery_from_user: Number(body.awaiting_delivery_from_user)||0,
+      receiving_only: Number(body.receiving_only)||0,
+      awaiting_return_from_rush: Number(body.awaiting_return_from_rush)||0,
+      notes: body.notes || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    emeaStock.push(row);
+    return ok(res, { ok: true, row });
   }
-  methodNotAllowed(res);
+  return send(res, 405, { error: 'Method Not Allowed' });
 }
-
-async function handleStockId(req, res, region, id) {
-  if (!requireAuth(req, res)) return;
-  const store = region === 'emea' ? emeaStock : usStock;
-  const idx = store.findIndex(r => String(r.id) === String(id));
-  if (idx === -1) return notFound(res);
+async function handleEmeaStockId(req, res, id) {
+  if (!requireAny(req, res)) return;
+  const idx = emeaStock.findIndex(r => r.id === id);
+  if (idx === -1) return send(res, 404, { error: 'Not found' });
 
   if (req.method === 'PUT') {
-    const body = await readBody(req);
-    store[idx] = { ...store[idx], ...body, updated_at: new Date().toISOString() };
-    return send(res, 200, { ok: true });
+    const patch = numberizeAll(await readBody(req));
+    emeaStock[idx] = { ...emeaStock[idx], ...patch, updated_at: new Date().toISOString() };
+    return ok(res, { ok: true });
   }
   if (req.method === 'DELETE') {
-    store.splice(idx, 1);
-    return send(res, 200, { ok: true });
+    emeaStock.splice(idx, 1);
+    return ok(res, { ok: true });
   }
-  methodNotAllowed(res);
+  return send(res, 405, { error: 'Method Not Allowed' });
+}
+function handleEmeaDevices(_req, res) {
+  const DEVICE_NAMES = [
+    "Ninja","Ninja V","Ninja V Plus","Ninja Ultra","Ninja Phone",
+    "Shinobi II","Shinobi 7","Shinobi GO","Shogun Ultra","Shogun Connect",
+    "Sumo 19SE","A-Eye PTZ camera","Sun Hood","Master Caddy III","Atomos Connect",
+    "AtomX Battery","Ultrasync Blue","AtomFlex HDMI Cable","Atomos Creator Kit 5''",
+  ];
+  const found = [...new Set(emeaStock.map(s => s.device_name).filter(Boolean))];
+  const devices = Array.from(new Set([...DEVICE_NAMES, ...found])).sort();
+  return ok(res, { devices });
 }
 
-async function handleStockDevices(_req, res, region) {
-  const store = region === 'emea' ? emeaStock : usStock;
-  const set = new Set(store.map(r => r.device_name).filter(Boolean));
-  return send(res, 200, { devices: [...set].sort() });
+// US stock
+async function handleUsStock(req, res) {
+  if (!requireAny(req, res)) return;
+  if (req.method === 'GET') {
+    const items = filterStock(usStock, req.url);
+    return ok(res, { items });
+  }
+  if (req.method === 'POST') {
+    const body = numberizeAll(await readBody(req));
+    const row = {
+      id: genId('us'),
+      month: body.month || toMonth(new Date().toISOString()),
+      device_name: body.device_name || '—',
+      d_stock_received: Number(body.d_stock_received)||0,
+      b_stock_received: Number(body.b_stock_received)||0,
+      new_stock_sent: Number(body.new_stock_sent)||0,
+      rma_bstock_rstock_sent: Number(body.rma_bstock_rstock_sent)||0,
+      a_stock_received: Number(body.a_stock_received)||0,
+      awaiting_delivery_from_user: Number(body.awaiting_delivery_from_user)||0,
+      receive_only: Number(body.receive_only)||0,
+      awaiting_return_from_rush: Number(body.awaiting_return_from_rush)||0,
+      notes: body.notes || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    usStock.push(row);
+    return ok(res, { ok: true, row });
+  }
+  return send(res, 405, { error: 'Method Not Allowed' });
+}
+async function handleUsStockId(req, res, id) {
+  if (!requireAny(req, res)) return;
+  const idx = usStock.findIndex(r => r.id === id);
+  if (idx === -1) return send(res, 404, { error: 'Not found' });
+
+  if (req.method === 'PUT') {
+    const patch = numberizeAll(await readBody(req));
+    usStock[idx] = { ...usStock[idx], ...patch, updated_at: new Date().toISOString() };
+    return ok(res, { ok: true });
+  }
+  if (req.method === 'DELETE') {
+    usStock.splice(idx, 1);
+    return ok(res, { ok: true });
+  }
+  return send(res, 405, { error: 'Method Not Allowed' });
+}
+function handleUsDevices(_req, res) {
+  const DEVICE_NAMES = [
+    "Ninja","Ninja V","Ninja V Plus","Ninja Ultra","Ninja Phone",
+    "Shinobi II","Shinobi 7","Shinobi GO","Shogun Ultra","Shogun Connect",
+    "Sumo 19SE","A-Eye PTZ camera","Sun Hood","Master Caddy III","Atomos Connect",
+    "AtomX Battery","Ultrasync Blue","AtomFlex HDMI Cable","Atomos Creator Kit 5''",
+  ];
+  const found = [...new Set(usStock.map(s => s.device_name).filter(Boolean))];
+  const devices = Array.from(new Set([...DEVICE_NAMES, ...found])).sort();
+  return ok(res, { devices });
 }
 
-// --------------- Main handler (router) ---------------
+/* ---------------- Main handler / router ---------------- */
 export default async function handler(req, res) {
   const path = (req.url.split('?')[0] || '');
 
-  // Auth/session
-  if (path === '/api/session' && req.method === 'GET') return handleSession(req, res);
+  // auth
   if (path === '/api/internal-login') return handleInternalLogin(req, res);
-  if (path === '/api/viewer-login') return handleViewerLogin(req, res);
-  if (path === '/api/logout') return handleLogout(req, res);
+  if (path === '/api/viewer-login')   return handleViewerLogin(req, res);
+  if (path === '/api/session' && req.method === 'GET') return handleSession(req, res);
+  if (path === '/api/logout')         return handleLogout(req, res);
 
-  // RMA entries
-  if (path === '/api/rma/entries') return handleEntries(req, res);
-  if (path.startsWith('/api/rma/entries/export.csv')) return handleEntriesExport(req, res);
-  if (path === '/api/rma/entries/template.csv') return handleEntriesTemplate(req, res);
-  if (path === '/api/rma/entries/import') return handleEntriesImport(req, res);
-  const entryIdMatch = path.match(/^\/api\/rma\/entries\/(\d+)$/);
-  if (entryIdMatch) return handleEntriesId(req, res, entryIdMatch[1]);
+  // rma entries
+  if (path === '/api/rma/entries')                        return handleEntries(req, res);
+  if (path === '/api/rma/entries/template.csv')           return handleEntriesTemplate(req, res);
+  if (path === '/api/rma/entries/export.csv')             return handleEntriesExport(req, res);
+  if (path === '/api/rma/entries/import')                 return handleEntriesImport(req, res);
+  const entryId = path.match(/^\/api\/rma\/entries\/([^/]+)$/);
+  if (entryId) return handleEntryId(req, res, entryId[1]);
 
-  // EMEA stock
-  if (path === '/api/rma/emea/stock') return handleStockList(req, res, 'emea');
-  if (path === '/api/rma/emea/devices') return handleStockDevices(req, res, 'emea');
-  const emeaId = path.match(/^\/api\/rma\/emea\/stock\/(\d+)$/);
-  if (emeaId) return handleStockId(req, res, 'emea', emeaId[1]);
+  // emea stock
+  if (path === '/api/rma/emea/stock')                     return handleEmeaStock(req, res);
+  if (path === '/api/rma/emea/devices')                   return handleEmeaDevices(req, res);
+  const emeaId = path.match(/^\/api\/rma\/emea\/stock\/([^/]+)$/);
+  if (emeaId) return handleEmeaStockId(req, res, emeaId[1]);
 
-  // US stock
-  if (path === '/api/rma/us/stock') return handleStockList(req, res, 'us');
-  if (path === '/api/rma/us/devices') return handleStockDevices(req, res, 'us');
-  const usId = path.match(/^\/api\/rma\/us\/stock\/(\d+)$/);
-  if (usId) return handleStockId(req, res, 'us', usId[1]);
+  // us stock
+  if (path === '/api/rma/us/stock')                       return handleUsStock(req, res);
+  if (path === '/api/rma/us/devices')                     return handleUsDevices(req, res);
+  const usId = path.match(/^\/api\/rma\/us\/stock\/([^/]+)$/);
+  if (usId) return handleUsStockId(req, res, usId[1]);
 
-  return notFound(res);
+  return send(res, 404, { error: 'Not Found' });
 }
