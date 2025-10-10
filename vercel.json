@@ -3,13 +3,22 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-    "rewrites": [
-    { "source": "/api/(internal-login|viewer-login|session|session/refresh|logout)", "destination": "/api/auth" },
-    { "source": "/api/rma/entries(.*)", "destination": "/api/rma-entries" },
-    { "source": "/api/rma/(emea|us)/(stock|devices)(.*)", "destination": "/api/rma-stock" },
-    { "source": "/((?!api).*)", "destination": "/index.html" }
+  "rewrites": [
+    {
+      "source": "/api/(internal-login|viewer-login|session|session/refresh|logout)",
+      "destination": "/api/auth"
+    },
+    {
+      "source": "/api/rma/entries(.*)",
+      "destination": "/api/rma-entries"
+    },
+    {
+      "source": "/api/rma/(emea|us)/(stock|devices)(.*)",
+      "destination": "/api/rma-stock"
+    },
+    {
+      "source": "/((?!api).*)",
+      "destination": "/"
+    }
   ]
 }
-
-
-  
