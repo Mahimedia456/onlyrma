@@ -1,4 +1,4 @@
-export const config = { runtime: "nodejs" };
+export const config = { runtime: 'nodejs' }
 import { setSession } from "./_session.js";
 
 export default async function handler(req, res) {
