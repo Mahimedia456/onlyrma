@@ -6,7 +6,7 @@ import cors from "cors";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
 
-// ------------------------ utils (paths, files) ------------------------
+/* ------------------------ paths ------------------------ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DIST_DIR = path.join(__dirname, "dist");
@@ -16,7 +16,7 @@ const ENTRIES_FILE = path.join(DATA_DIR, "rma_entries.json");
 const US_STOCK_FILE = path.join(DATA_DIR, "rma_stock_us.json");
 const EMEA_STOCK_FILE = path.join(DATA_DIR, "rma_stock_emea.json");
 
-// device list (for dropdowns)
+/* ------------------------ constants ------------------------ */
 const DEVICE_NAMES = [
   "Ninja","Ninja V","Ninja V Plus","Ninja Ultra","Ninja Phone",
   "Shinobi II","Shinobi 7","Shinobi GO","Shogun Ultra","Shogun Connect",
@@ -24,7 +24,7 @@ const DEVICE_NAMES = [
   "AtomX Battery","Ultrasync Blue","AtomFlex HDMI Cable","Atomos Creator Kit 5''",
 ];
 
-// ensure data dir & files exist
+/* ------------------------ bootstrap data files ------------------------ */
 async function ensureDataFiles() {
   try { await fs.mkdir(DATA_DIR, { recursive: true }); } catch {}
   for (const f of [ENTRIES_FILE, US_STOCK_FILE, EMEA_STOCK_FILE]) {
@@ -33,25 +33,19 @@ async function ensureDataFiles() {
   }
 }
 
-// JSON helpers
+/* ------------------------ helpers: json & csv ------------------------ */
 async function readJson(file) {
-  try {
-    const txt = await fs.readFile(file, "utf8");
-    return JSON.parse(txt || "[]");
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(await fs.readFile(file, "utf8") || "[]"); }
+  catch { return []; }
 }
 async function writeJson(file, data) {
   await fs.writeFile(file, JSON.stringify(data, null, 2), "utf8");
 }
 
-// id helper
 function genId(prefix="id") {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
 }
 
-// csv helpers
 function csvEscape(val) {
   if (val === undefined || val === null) return "";
   const s = String(val);
@@ -63,7 +57,6 @@ function toCSV(rows, columns) {
   return "\uFEFF" + [header, ...lines].join("\n");
 }
 
-// date helpers
 function fmtDateISO(v) {
   if (!v) return null;
   try {
@@ -77,15 +70,25 @@ function toMonth(v) { // YYYY-MM
   if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0,7);
   return d.toISOString().slice(0,7);
 }
+function numberizeAll(obj) {
+  const out = { ...obj };
+  for (const k of Object.keys(out)) {
+    const v = out[k];
+    if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) out[k] = Number(v);
+  }
+  return out;
+}
 
-// ------------------------ session cookie helpers ------------------------
+/* ------------------------ session cookie helpers ------------------------ */
+// Name matches your frontend expectations
 const COOKIE_NAME = "rma_sess";
 
-function buildCookieString(name, value, { maxAge, secure = true, httpOnly = true, sameSite = "Lax" } = {}) {
+// Build cookie string
+function buildCookieString(name, value, { maxAge, secure = true, sameSite = "Lax", httpOnly = true, path = "/" } = {}) {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
-    "Path=/",
-    `SameSite=${sameSite}`
+    `Path=${path}`,
+    `SameSite=${sameSite}`,
   ];
   if (typeof maxAge === "number") parts.push(`Max-Age=${maxAge}`);
   if (secure) parts.push("Secure");
@@ -93,31 +96,43 @@ function buildCookieString(name, value, { maxAge, secure = true, httpOnly = true
   return parts.join("; ");
 }
 
+// Set cookie with session object (JSON -> base64url)
 function setSessionCookie(res, session, { maxDays = 30 } = {}) {
   const value = Buffer.from(JSON.stringify(session), "utf8").toString("base64url");
   const maxAge = maxDays * 24 * 3600;
-  // Secure only on prod/Vercel (HTTPS)
   const isProd = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
   const cookie = buildCookieString(COOKIE_NAME, value, {
     maxAge,
-    secure: isProd,
-    httpOnly: true,
+    secure: isProd,     // NOT secure on localhost
     sameSite: "Lax",
+    httpOnly: true,
+    path: "/",
   });
   res.setHeader("Set-Cookie", cookie);
 }
 
+// Refresh the cookie TTL without changing contents
+function refreshSessionCookie(req, res) {
+  const s = getSessionFromCookie(req);
+  if (!s) return false;
+  setSessionCookie(res, s, { maxDays: 30 });
+  return true;
+}
+
+// Clear cookie
 function clearSessionCookie(res) {
   const isProd = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
   const cookie = buildCookieString(COOKIE_NAME, "", {
     maxAge: 0,
     secure: isProd,
-    httpOnly: true,
     sameSite: "Lax",
+    httpOnly: true,
+    path: "/",
   });
   res.setHeader("Set-Cookie", cookie);
 }
 
+// Parse cookie -> session object
 function getSessionFromCookie(req) {
   const raw = (req.cookies || {})[COOKIE_NAME];
   if (!raw) return null;
@@ -125,6 +140,7 @@ function getSessionFromCookie(req) {
     return JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
   } catch { return null; }
 }
+
 function requireAdmin(req, res, next) {
   const s = getSessionFromCookie(req);
   if (!s || s.role !== "admin") return res.status(401).json({ error: "Admin required" });
@@ -138,14 +154,14 @@ function requireAny(req, res, next) {
   next();
 }
 
-// ------------------------ app bootstrap ------------------------
+/* ------------------------ app ------------------------ */
 await ensureDataFiles();
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
 
-// Dev CORS for Vite + LAN
+// Dev CORS so Vite can send cookies
 if (process.env.NODE_ENV !== "production") {
   app.use(cors({
     origin: (origin, cb) => {
@@ -157,12 +173,13 @@ if (process.env.NODE_ENV !== "production") {
   }));
 }
 
-// ------------------------ auth routes ------------------------
+/* ------------------------ AUTH ------------------------ */
 app.post("/api/internal-login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (email?.toLowerCase() === "internal@mahimedisolutions.com" && password === "mahimediasolutions") {
+  console.log("[internal-login]", email);
+  if (email?.toLowerCase().trim() === "internal@mahimedisolutions.com" && password === "mahimediasolutions") {
     const session = { role: "admin", user: { email, name: "Internal Admin" }, source: "internal" };
-    setSessionCookie(res, session, { maxDays: 30 });
+    setSessionCookie(res, session);
     return res.json({ ok: true, role: "admin", user: session.user });
   }
   return res.status(401).json({ ok: false, error: "Invalid internal credentials" });
@@ -170,18 +187,27 @@ app.post("/api/internal-login", async (req, res) => {
 
 app.post("/api/viewer-login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (email?.toLowerCase() === "rush@mahimedisolutions.com" && password === "aamirtest") {
+  console.log("[viewer-login]", email);
+  if (email?.toLowerCase().trim() === "rush@mahimediasolutions.com" && password === "aamirtest") {
     const session = { role: "viewer", user: { email, name: "Rush Viewer" }, source: "viewer" };
-    setSessionCookie(res, session, { maxDays: 30 });
+    setSessionCookie(res, session);
     return res.json({ ok: true, role: "viewer", user: session.user });
   }
   return res.status(401).json({ ok: false, error: "Invalid viewer credentials" });
 });
 
+// keep-alive refresh
+app.get("/api/session/refresh", (req, res) => {
+  const ok = refreshSessionCookie(req, res);
+  if (!ok) return res.status(401).json({ error: "No session" });
+  return res.json({ ok: true, refreshed: true });
+});
+
+// whoami
 app.get("/api/session", (req, res) => {
   const s = getSessionFromCookie(req);
   if (!s) return res.status(401).json({ error: "No session" });
-  return res.json({ ok: true, role: s.role || "viewer", user: s.user || null });
+  return res.json({ ok: true, role: s.role, user: s.user });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -189,18 +215,7 @@ app.post("/api/logout", (req, res) => {
   return res.json({ ok: true });
 });
 
-// 🔁 refresh cookie expiry while user is active
-app.get("/api/session/refresh", requireAny, (req, res) => {
-  setSessionCookie(res, req.session, { maxDays: 30 });
-  return res.json({ ok: true, refreshed: true });
-});
-app.post("/api/session/refresh", requireAny, (req, res) => {
-  setSessionCookie(res, req.session, { maxDays: 30 });
-  return res.json({ ok: true, refreshed: true });
-});
-
-// ------------------------ RMA entries ------------------------
-// GET /api/rma/entries?month=YYYY-MM&category=
+/* ------------------------ RMA entries ------------------------ */
 app.get("/api/rma/entries", requireAny, async (req, res) => {
   const month = (req.query.month || "").trim();
   const category = (req.query.category || "").trim();
@@ -211,7 +226,6 @@ app.get("/api/rma/entries", requireAny, async (req, res) => {
   return res.json({ entries });
 });
 
-// POST /api/rma/entries
 app.post("/api/rma/entries", requireAny, async (req, res) => {
   const body = req.body || {};
   const now = new Date().toISOString();
@@ -254,7 +268,6 @@ app.post("/api/rma/entries", requireAny, async (req, res) => {
   return res.json({ ok: true, entry });
 });
 
-// PUT /api/rma/entries/:id
 app.put("/api/rma/entries/:id", requireAny, async (req, res) => {
   const { id } = req.params;
   const patch = req.body || {};
@@ -267,7 +280,6 @@ app.put("/api/rma/entries/:id", requireAny, async (req, res) => {
   return res.json({ ok: true, entry: merged });
 });
 
-// DELETE /api/rma/entries/:id
 app.delete("/api/rma/entries/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const items = await readJson(ENTRIES_FILE);
@@ -276,7 +288,6 @@ app.delete("/api/rma/entries/:id", requireAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
-// POST /api/rma/entries/import  body: { items: [...] }
 app.post("/api/rma/entries/import", requireAdmin, async (req, res) => {
   const { items = [] } = req.body || {};
   const now = new Date().toISOString();
@@ -332,7 +343,6 @@ app.post("/api/rma/entries/import", requireAdmin, async (req, res) => {
   return res.status(status).json({ ok: failed === 0, imported, failed, report });
 });
 
-// GET /api/rma/entries/template.csv
 app.get("/api/rma/entries/template.csv", requireAny, async (req, res) => {
   const headers = [
     "Date","Ticket","First Name","Last Name","Email","Phone","Company (if Applicable)","Reseller / Customer",
@@ -347,7 +357,6 @@ app.get("/api/rma/entries/template.csv", requireAny, async (req, res) => {
   return res.send(csv);
 });
 
-// GET /api/rma/entries/export.csv
 app.get("/api/rma/entries/export.csv", requireAny, async (req, res) => {
   const month = (req.query.month || "").trim();
   const category = (req.query.category || "").trim();
@@ -367,24 +376,14 @@ app.get("/api/rma/entries/export.csv", requireAny, async (req, res) => {
   return res.send(csv);
 });
 
-// ------------------------ RMA stock (US / EMEA) ------------------------
-// helpers
+/* ------------------------ RMA stock (US / EMEA) ------------------------ */
 async function listStock(file, month, device) {
   let items = await readJson(file);
   if (month) items = items.filter(r => (r.month || "") === month);
   if (device) items = items.filter(r => (r.device_name || "") === device);
   return items;
 }
-function numberizeAll(obj) {
-  const out = { ...obj };
-  for (const k of Object.keys(out)) {
-    const v = out[k];
-    if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) out[k] = Number(v);
-  }
-  return out;
-}
 
-// DEVICES (US)
 app.get("/api/rma/us/devices", requireAny, async (req, res) => {
   const stock = await readJson(US_STOCK_FILE);
   const found = [...new Set(stock.map(s => s.device_name).filter(Boolean))];
@@ -392,7 +391,6 @@ app.get("/api/rma/us/devices", requireAny, async (req, res) => {
   return res.json({ devices });
 });
 
-// STOCK LIST (US)
 app.get("/api/rma/us/stock", requireAny, async (req, res) => {
   const month = (req.query.month || "").trim();
   const device = (req.query.device_name || "").trim();
@@ -400,7 +398,6 @@ app.get("/api/rma/us/stock", requireAny, async (req, res) => {
   return res.json({ items });
 });
 
-// STOCK CREATE (US)
 app.post("/api/rma/us/stock", requireAny, async (req, res) => {
   const body = numberizeAll(req.body || {});
   const items = await readJson(US_STOCK_FILE);
@@ -425,7 +422,6 @@ app.post("/api/rma/us/stock", requireAny, async (req, res) => {
   return res.json({ ok: true, row });
 });
 
-// STOCK UPDATE (US)
 app.put("/api/rma/us/stock/:id", requireAny, async (req, res) => {
   const { id } = req.params;
   const patch = numberizeAll(req.body || {});
@@ -437,7 +433,6 @@ app.put("/api/rma/us/stock/:id", requireAny, async (req, res) => {
   return res.json({ ok: true, row: items[i] });
 });
 
-// STOCK DELETE (US)
 app.delete("/api/rma/us/stock/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const items = await readJson(US_STOCK_FILE);
@@ -446,7 +441,6 @@ app.delete("/api/rma/us/stock/:id", requireAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
-// DEVICES (EMEA)
 app.get("/api/rma/emea/devices", requireAny, async (req, res) => {
   const stock = await readJson(EMEA_STOCK_FILE);
   const found = [...new Set(stock.map(s => s.device_name).filter(Boolean))];
@@ -454,7 +448,6 @@ app.get("/api/rma/emea/devices", requireAny, async (req, res) => {
   return res.json({ devices });
 });
 
-// STOCK LIST (EMEA)
 app.get("/api/rma/emea/stock", requireAny, async (req, res) => {
   const month = (req.query.month || "").trim();
   const device = (req.query.device_name || "").trim();
@@ -462,7 +455,6 @@ app.get("/api/rma/emea/stock", requireAny, async (req, res) => {
   return res.json({ items });
 });
 
-// STOCK CREATE (EMEA)
 app.post("/api/rma/emea/stock", requireAny, async (req, res) => {
   const body = numberizeAll(req.body || {});
   const items = await readJson(EMEA_STOCK_FILE);
@@ -486,7 +478,6 @@ app.post("/api/rma/emea/stock", requireAny, async (req, res) => {
   return res.json({ ok: true, row });
 });
 
-// STOCK UPDATE (EMEA)
 app.put("/api/rma/emea/stock/:id", requireAny, async (req, res) => {
   const { id } = req.params;
   const patch = numberizeAll(req.body || {});
@@ -498,7 +489,6 @@ app.put("/api/rma/emea/stock/:id", requireAny, async (req, res) => {
   return res.json({ ok: true, row: items[i] });
 });
 
-// STOCK DELETE (EMEA)
 app.delete("/api/rma/emea/stock/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const items = await readJson(EMEA_STOCK_FILE);
@@ -507,13 +497,13 @@ app.delete("/api/rma/emea/stock/:id", requireAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
-// ------------------------ static (prod) ------------------------
+/* ------------------------ static (prod) ------------------------ */
 app.use(express.static(DIST_DIR));
 app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(DIST_DIR, "index.html"));
 });
 
-// ------------------------ start ------------------------
+/* ------------------------ start ------------------------ */
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${PORT}`);

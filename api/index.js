@@ -36,23 +36,39 @@ function parseCookies(req) {
     return a;
   }, {});
 }
+
+/* -------- Cookie helpers: base64url(JSON) session -------- */
+const COOKIE_NAME = 'rma_sess';
+
+function b64Encode(obj) {
+  return Buffer.from(JSON.stringify(obj), 'utf8').toString('base64url');
+}
+function b64Decode(str) {
+  try {
+    return JSON.parse(Buffer.from(str, 'base64url').toString('utf8'));
+  } catch { return null; }
+}
+
 function setCookie(res, name, value, {
   maxAgeDays = 30,
-  secure = false,
   httpOnly = true,
-  sameSite = 'Lax'
+  sameSite = 'Lax',
+  // Vercel (https) -> Secure=true. This file is for Vercel; local runs use server.js.
+  secure = true,
+  path = '/',
 } = {}) {
-  const maxAge = maxAgeDays * 24 * 60 * 60;
+  const maxAge = Math.max(1, Math.floor(maxAgeDays * 24 * 60 * 60));
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
-    `Path=/`,
+    `Path=${path}`,
     `Max-Age=${maxAge}`,
-    `SameSite=${sameSite}`
+    `SameSite=${sameSite}`,
   ];
   if (secure) parts.push('Secure');
   if (httpOnly) parts.push('HttpOnly');
   res.setHeader('Set-Cookie', parts.join('; '));
 }
+
 function clearCookie(res, name) {
   res.setHeader(
     'Set-Cookie',
@@ -60,14 +76,21 @@ function clearCookie(res, name) {
   );
 }
 
+function getSessionFromCookie(req) {
+  const raw = parseCookies(req)[COOKIE_NAME];
+  if (!raw) return null;
+  return b64Decode(raw);
+}
+
 function requireAny(req, res) {
-  const cookies = parseCookies(req);
-  if (cookies.rma_sess !== '1') {
+  const s = getSessionFromCookie(req);
+  if (!s) {
     send(res, 401, { error: 'Not authenticated' });
     return false;
   }
   return true;
 }
+
 function csvEscape(val) {
   if (val === undefined || val === null) return '';
   const s = String(val);
@@ -109,33 +132,41 @@ async function handleInternalLogin(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
   const { email, password } = await readBody(req);
   if (email?.toLowerCase() === 'internal@mahimedisolutions.com' && password === 'mahimediasolutions') {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true });
-    return ok(res, { ok: true, role: 'admin', user: { email } });
+    const session = { role: 'admin', user: { email, name: 'Internal Admin' } };
+    setCookie(res, COOKIE_NAME, b64Encode(session), { maxAgeDays: 30 });
+    return ok(res, { ok: true, role: 'admin', user: session.user });
   }
   return send(res, 401, { ok: false, error: 'Invalid credentials' });
 }
 async function handleViewerLogin(req, res) {
   if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' });
   const { email, password } = await readBody(req);
-  if (email?.toLowerCase() === 'rush@mahimediasolutions.com' && password === 'aamirtest') {
-    setCookie(res, 'rma_sess', '1', { httpOnly: true });
-    return ok(res, { ok: true, role: 'viewer', user: { email } });
+  if (email?.toLowerCase() === 'rush@mahimedisolutions.com' && password === 'aamirtest') {
+    const session = { role: 'viewer', user: { email, name: 'Rush Viewer' } };
+    setCookie(res, COOKIE_NAME, b64Encode(session), { maxAgeDays: 30 });
+    return ok(res, { ok: true, role: 'viewer', user: session.user });
   }
   return send(res, 401, { ok: false, error: 'Invalid viewer credentials' });
 }
 function handleSession(req, res) {
-  const cookies = parseCookies(req);
-  if (cookies.rma_sess === '1') {
-    return ok(res, { ok: true, role: 'admin', user: { email: 'internal@mahimedisolutions.com' } });
-  }
-  return send(res, 401, { error: 'No session' });
+  const s = getSessionFromCookie(req);
+  if (!s) return send(res, 401, { error: 'No session' });
+  return ok(res, { ok: true, role: s.role || 'viewer', user: s.user || null });
 }
 function handleLogout(_req, res) {
-  clearCookie(res, 'rma_sess');
+  clearCookie(res, COOKIE_NAME);
   return ok(res, { ok: true });
 }
+// 🔁 refresh cookie expiry while user is active
+function handleSessionRefresh(req, res) {
+  const s = getSessionFromCookie(req);
+  if (!s) return send(res, 401, { error: 'No session' });
+  // Re-set with fresh Max-Age
+  setCookie(res, COOKIE_NAME, b64Encode(s), { maxAgeDays: 30 });
+  return ok(res, { ok: true, refreshed: true });
+}
 
-// RMA entries
+/* ---------------- RMA entries ---------------- */
 async function handleEntries(req, res) {
   if (!requireAny(req, res)) return;
   if (req.method === 'GET') {
@@ -211,7 +242,7 @@ async function handleEntryId(req, res, id) {
   return send(res, 405, { error: 'Method Not Allowed' });
 }
 
-// RMA entries export/template/import
+/* ---------------- RMA entries export/template/import ---------------- */
 function handleEntriesTemplate(_req, res) {
   const headers = [
     'Date','Ticket','First Name','Last Name','Email','Phone','Company (if Applicable)','Reseller / Customer',
@@ -298,7 +329,7 @@ async function handleEntriesImport(req, res) {
   return ok(res, { imported, failed: 0 });
 }
 
-// Stock: shared filters
+/* ---------------- Stock: shared filters ---------------- */
 function filterStock(list, url) {
   const u = new URL(url, 'http://x');
   const month = (u.searchParams.get('month') || '').trim();
@@ -309,7 +340,7 @@ function filterStock(list, url) {
   return out;
 }
 
-// EMEA stock
+/* ---------------- EMEA stock ---------------- */
 async function handleEmeaStock(req, res) {
   if (!requireAny(req, res)) return;
   if (req.method === 'GET') {
@@ -366,7 +397,7 @@ function handleEmeaDevices(_req, res) {
   return ok(res, { devices });
 }
 
-// US stock
+/* ---------------- US stock ---------------- */
 async function handleUsStock(req, res) {
   if (!requireAny(req, res)) return;
   if (req.method === 'GET') {
@@ -432,6 +463,7 @@ export default async function handler(req, res) {
   if (path === '/api/internal-login') return handleInternalLogin(req, res);
   if (path === '/api/viewer-login')   return handleViewerLogin(req, res);
   if (path === '/api/session' && req.method === 'GET') return handleSession(req, res);
+  if (path === '/api/session/refresh') return handleSessionRefresh(req, res);
   if (path === '/api/logout')         return handleLogout(req, res);
 
   // rma entries

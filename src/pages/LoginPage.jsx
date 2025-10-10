@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
 
   const title = useMemo(
-    () => (isInternal ? "RMA Internal Login" : "Rush Login"),
+    () => (isInternal ? "RMA Internal Login" : "Ru Login"),
     [isInternal]
   );
 
