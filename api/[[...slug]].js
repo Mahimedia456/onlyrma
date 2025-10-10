@@ -2,7 +2,7 @@
 // One-file serverless API for Vercel (Hobby plan friendly).
 // Memory-only (resets on cold start). No disk writes on Vercel.
 
-export const config = { runtime: 'nodejs18.x' };
+export const config = { runtime: 'nodejs' };
 
 /* ---------------- In-memory stores ---------------- */
 let entries = [];   // RMA entries
