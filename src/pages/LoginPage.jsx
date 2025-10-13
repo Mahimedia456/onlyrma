@@ -12,7 +12,7 @@ export default function LoginPage() {
 
   // Internal admin (full control)
   const [internal, setInternal] = useState({
-    email: "internal@mahimedisolutions.com",
+    email: "internal@mahimediasolutions.com",
     password: "mahimediasolutions",
   });
 
