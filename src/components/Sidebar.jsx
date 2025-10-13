@@ -38,7 +38,7 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
       >
         {/* Mobile header */}
         <div className="mb-4 flex items-center justify-between md:hidden">
-          <img src="../src/assets/atomosf.png" alt="Logo" className="h-8" />
+          <img src="/atomosf.png" alt="Logo" className="h-8" />
           <button onClick={onClose} className="rounded p-2 hover:bg-gray-100" aria-label="Close sidebar">
             <FiX />
           </button>
@@ -46,7 +46,7 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
 
         {/* Desktop logo */}
         <div className="hidden md:flex items-center justify-center mb-4">
-          <img src="../src/assets/atomosf.png" alt="Logo" className="h-8" />
+          <img src="/atomosf.png" alt="Logo" className="h-8" />
         </div>
 
         <nav className="flex-1 space-y-1">
