@@ -1,3 +1,4 @@
+// /api/auth.js
 export const config = { runtime: 'nodejs' };
 
 /* --------- helpers ---------- */
@@ -27,13 +28,20 @@ function parseCookies(req) {
     return a;
   }, {});
 }
-function setCookie(res, name, value, {
-  maxAgeDays = 30,
-  path = '/',
-  sameSite = process.env.VERCEL ? 'None' : 'Lax',
-  httpOnly = true,
-  secure = !!process.env.VERCEL
-} = {}) {
+
+/** On Vercel (HTTPS), cross-site cookies require SameSite=None; Secure */
+function setCookie(
+  res,
+  name,
+  value,
+  {
+    maxAgeDays = 30,
+    path = '/',
+    sameSite = process.env.VERCEL ? 'None' : 'Lax',
+    httpOnly = true,
+    secure = !!process.env.VERCEL,
+  } = {}
+) {
   const maxAge = maxAgeDays * 24 * 60 * 60;
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
@@ -47,8 +55,10 @@ function setCookie(res, name, value, {
 }
 function clearCookie(res, name) {
   const secure = !!process.env.VERCEL;
-  res.setHeader('Set-Cookie',
-    `${name}=; Path=/; Max-Age=0; SameSite=Lax; ${secure ? 'Secure; ' : ''}HttpOnly`
+  const sameSite = process.env.VERCEL ? 'None' : 'Lax';
+  res.setHeader(
+    'Set-Cookie',
+    `${name}=; Path=/; Max-Age=0; SameSite=${sameSite}; ${secure ? 'Secure; ' : ''}HttpOnly`
   );
 }
 
@@ -81,7 +91,7 @@ function sessionGet(req, res) {
 function sessionRefresh(req, res) {
   const cookies = parseCookies(req);
   if (cookies.rma_sess === '1') {
-    setCookie(res, 'rma_sess', '1'); // extend
+    setCookie(res, 'rma_sess', '1'); // extend TTL
     return ok(res, { ok: true, refreshed: true });
   }
   return send(res, 401, { error: 'No session' });
@@ -91,10 +101,11 @@ function logout(_req, res) {
   return ok(res, { ok: true });
 }
 
-/* --------- main handler ---------- */
+/* --------- main handler (Vercel rewrite friendly) ---------- */
 export default async function handler(req, res) {
   const path = (req.url.split('?')[0] || '');
 
+  // Match by substring to tolerate Vercel rewrites to /api/auth
   if (path.includes('/internal-login'))  return internalLogin(req, res);
   if (path.includes('/viewer-login'))    return viewerLogin(req, res);
   if (path.includes('/session/refresh')) return sessionRefresh(req, res);
