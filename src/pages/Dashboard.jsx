@@ -49,7 +49,7 @@ export default function Dashboard() {
           >
             <FiMenu />
           </button>
-          <img src="https://www.angelbird.com/static/web/img/AB_Logo.svg" alt="Angelbird" className="h-6" />
+          <img src="/atomosf.png" alt="Angelbird" className="h-6" />
         </div>
 
         {/* RMA views */}
