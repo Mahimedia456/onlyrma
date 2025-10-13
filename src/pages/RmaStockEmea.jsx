@@ -1,5 +1,15 @@
+// src/pages/RmaStockEmea.jsx
 import { useEffect, useMemo, useState } from "react";
 import { apiUrl } from "@/lib/apiBase";
+
+/** Split composite device names like "Ninja Ultra & Atomos Connect" -> ["Ninja Ultra","Atomos Connect"] */
+function splitDevices(name) {
+  if (!name) return [];
+  return String(name)
+    .split(/[,/&]| and /i) // ',', '/', '&', ' and '
+    .map(s => s.trim())
+    .filter(Boolean);
+}
 
 /** Lightweight session reader */
 function useSessionRoleInline() {
@@ -52,7 +62,7 @@ export default function RmaStockEmea() {
     };
   }
 
-  // 1) Base device list from server (static names + stock devices)
+  // 1) Base device list from existing stock API (server-known devices + built-ins)
   useEffect(() => {
     (async () => {
       try {
@@ -71,7 +81,7 @@ export default function RmaStockEmea() {
     })();
   }, [API]);
 
-  // 2) Enrich device list with devices referenced in RMA entries (for current month & EMEA)
+  // 2) Enrich device list with devices referenced in RMA entries for the selected month (no org filter!)
   useEffect(() => {
     (async () => {
       try {
@@ -80,22 +90,19 @@ export default function RmaStockEmea() {
         const data = await (async () => { try { return await res.json(); } catch { return null; } })();
         if (!res.ok || !data?.entries) return;
 
-        const fromEntries = Array.from(new Set(
-          data.entries
-            .filter(e => (e.organization || "").toUpperCase() === "EMEA")
-            .map(e => (e.device_name || "").trim())
-            .filter(Boolean)
-        ));
+        const fromEntries = new Set();
+        for (const e of data.entries) {
+          for (const n of splitDevices(e.device_name)) fromEntries.add(n);
+        }
 
-        // Merge with existing devices
         setDevices(prev => Array.from(new Set([...(prev || []), ...fromEntries])).sort());
-      } catch (e) {
-        // ignore – non-fatal
+      } catch {
+        // non-fatal
       }
     })();
   }, [API, month]);
 
-  // Stock table for EMEA
+  // Stock table fetch
   useEffect(() => {
     (async () => {
       if (!month) return;
