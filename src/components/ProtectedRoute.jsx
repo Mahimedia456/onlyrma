@@ -3,9 +3,9 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function ProtectedRoute({ children }) {
-  const { isLoggedIn, authLoading } = useAuth();
+  const { isLoggedIn, loading } = useAuth(); // <-- use `loading`, not `authLoading`
 
-  if (authLoading) {
+  if (loading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center text-gray-600">
         Checking session…
