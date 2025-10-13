@@ -1,4 +1,3 @@
-// src/pages/RmaStockUs.jsx
 import { useEffect, useMemo, useState } from "react";
 import { apiUrl } from "@/lib/apiBase";
 
@@ -54,6 +53,7 @@ export default function RmaStockUs() {
     };
   }
 
+  // 1) Base device list from server (static names + stock devices)
   useEffect(() => {
     (async () => {
       try {
@@ -68,6 +68,31 @@ export default function RmaStockUs() {
     })();
   }, [API]);
 
+  // 2) Enrich device list with devices referenced in RMA entries (for current month & US)
+  useEffect(() => {
+    (async () => {
+      try {
+        const qs = new URLSearchParams({ month });
+        const res = await fetch(apiUrl(`/rma/entries?${qs.toString()}`), { credentials: "include" });
+        const data = await (async () => { try { return await res.json(); } catch { return null; } })();
+        if (!res.ok || !data?.entries) return;
+
+        const fromEntries = Array.from(new Set(
+          data.entries
+            .filter(e => (e.organization || "").toUpperCase() === "US")
+            .map(e => (e.device_name || "").trim())
+            .filter(Boolean)
+        ));
+
+        // Merge with existing devices
+        setDevices(prev => Array.from(new Set([...(prev || []), ...fromEntries])).sort());
+      } catch (e) {
+        // ignore – non-fatal
+      }
+    })();
+  }, [API, month]);
+
+  // Stock table for US
   useEffect(() => {
     (async () => {
       if (!month) return;
