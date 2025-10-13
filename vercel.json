@@ -4,6 +4,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
+    { "source": "/api/rma/entries(.*)", "destination": "/api/rma-entries" },
+    { "source": "/api/rma/(emea|us)/(stock|devices)(.*)", "destination": "/api/rma-stock" },
     { "source": "/((?!api).*)", "destination": "/" }
   ]
 }
