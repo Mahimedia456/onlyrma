@@ -222,30 +222,80 @@ function RmaLists({ refreshKey }) {
     }
     return m;
   }, [rows]);
+/* ---------- EXPORT (server first, then client fallback) ---------- */
+async function exportCSV() {
+  const qs = new URLSearchParams({
+    month: filters.month || "",
+    category: filters.category || "",
+  });
+  const url = apiUrl(`/rma/entries/export.csv?${qs.toString()}`);
 
-  /* ---------- EXPORT (server so headers match template) ---------- */
-  async function exportCSV() {
-    const qs = new URLSearchParams({
-      month: filters.month || "",
-      category: filters.category || "",
-    });
-    const a = document.createElement("a");
-    a.href = `${API}/api/rma/entries/export.csv?${qs.toString()}`;
-    a.download = `RMA_Entries_${filters.month || "all"}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
+  // Try server CSV
+  try {
+    const res = await fetch(url, { credentials: "include" });
+    if (res.ok && (res.headers.get("content-type") || "").includes("text/csv")) {
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `RMA_Entries_${filters.month || "all"}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+  } catch {}
 
-  /* ---------- TEMPLATE DOWNLOAD ---------- */
-  function downloadTemplate() {
-    const a = document.createElement("a");
-    a.href = apiUrl(`/rma/entries/template.csv`);
-    a.download = "rma_entries_template.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  // Fallback: make CSV client-side from current table rows
+  const cols = [
+    "id","entry_date","rma_no","ticket_id","first_name","last_name","email","phone","company","reseller_customer",
+    "address1","address2","city","state","country","postcode","product_with_fault","serial_number",
+    "product_sku","device_name","category","rma_type","stock_type","quantity","returned_reason","action",
+    "custom_tracking","replacement_tracking","created_at","updated_at","organization"
+  ];
+  const lines = [];
+  lines.push(cols.join(","));
+  for (const r of rows) {
+    const vals = cols.map((k) => csvEscape(r?.[k] ?? ""));
+    lines.push(vals.join(","));
   }
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `RMA_Entries_${filters.month || "all"}_client.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/* ---------- TEMPLATE DOWNLOAD (server first, then client fallback) ---------- */
+async function downloadTemplate() {
+  const url = apiUrl(`/rma/entries/template.csv`);
+
+  // Try server CSV
+  try {
+    const res = await fetch(url, { credentials: "include" });
+    if (res.ok && (res.headers.get("content-type") || "").includes("text/csv")) {
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "rma_entries_template.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
+  } catch {}
+
+  // Fallback: generate template with your exact headers
+  const headers = Object.keys(HUMAN_TO_CANON);
+  const blob = new Blob(["\uFEFF" + headers.join(",") + "\n"], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "rma_entries_template_client.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
   /* ---------- IMPORT (CSV with your headers) ---------- */
   function openImportDialog() {
@@ -342,18 +392,60 @@ function RmaLists({ refreshKey }) {
     setRows(prev => prev.filter(r => r.id !== id));
   }
 
-  async function saveEdit(id, patch) {
-    const toSend = { ...patch, entry_date: fmtDate(patch.entry_date) || null };
-    const res = await fetch(apiUrl(`/rma/entries/${id}`), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(toSend),
-    });
-    if (!res.ok) return alert("Update failed");
-    setRows(prev => prev.map(r => (r.id === id ? { ...r, ...toSend } : r)));
-    setEditRow(null);
+ async function saveEdit(id, patch) {
+  const role = (localStorage.getItem("role") || "admin").toLowerCase();
+  const before = rows.find(r => r.id === id) || {};
+  const toSend = { ...patch, entry_date: fmtDate(patch.entry_date) || null };
+
+  const res = await fetch(apiUrl(`/rma/entries/${id}`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(toSend),
+  });
+
+  if (!res.ok) {
+    const e = await safeJson(res);
+    alert(`Update failed: ${e?.error || res.statusText}`);
+    return;
   }
+
+  // Update UI
+  const after = { ...before, ...toSend };
+  setRows(prev => prev.map(r => (r.id === id ? after : r)));
+  setEditRow(null);
+
+  // If viewer -> email diff
+  if (role === "viewer") {
+    const changed = {};
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    for (const k of keys) {
+      const a = before?.[k];
+      const b = after?.[k];
+      if (String(a ?? "") !== String(b ?? "")) {
+        changed[k] = { before: a ?? "", after: b ?? "" };
+      }
+    }
+    // If something changed, notify
+    if (Object.keys(changed).length > 0) {
+      try {
+        await fetch("/api/notify-update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id,
+            changed,
+            entry_date: after.entry_date,
+            who: "viewer",
+          }),
+        });
+      } catch (err) {
+        console.warn("notify-update failed", err);
+      }
+    }
+  }
+}
+
 
   return (
     <div className="space-y-4">

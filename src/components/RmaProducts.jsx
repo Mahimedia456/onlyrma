@@ -193,7 +193,7 @@ const DATA = [
         name: "Zato",
         items: [
           { title: "Zato Connect PCBA", price: 250, image: IMG("Zato PCBA") },
-          { title: "Zato Connect LCD", price: 2504, image: IMG("Zato LCD") },
+          { title: "Zato Connect LCD", price: 250, image: IMG("Zato LCD") },
         ],
       },
     ],
