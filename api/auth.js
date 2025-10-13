@@ -1,4 +1,3 @@
-// api/auth.js
 export const config = { runtime: 'nodejs' };
 
 /* --------- helpers ---------- */
@@ -31,7 +30,7 @@ function parseCookies(req) {
 function setCookie(res, name, value, {
   maxAgeDays = 30,
   path = '/',
-  sameSite = 'Lax',
+  sameSite = process.env.VERCEL ? 'None' : 'Lax',
   httpOnly = true,
   secure = !!process.env.VERCEL
 } = {}) {
@@ -92,14 +91,15 @@ function logout(_req, res) {
   return ok(res, { ok: true });
 }
 
+/* --------- main handler ---------- */
 export default async function handler(req, res) {
   const path = (req.url.split('?')[0] || '');
 
-  if (path === '/api/internal-login')        return internalLogin(req, res);
-  if (path === '/api/viewer-login')          return viewerLogin(req, res);
-  if (path === '/api/session' && req.method === 'GET') return sessionGet(req, res);
-  if (path === '/api/session/refresh')       return sessionRefresh(req, res);
-  if (path === '/api/logout')                return logout(req, res);
+  if (path.includes('/internal-login'))  return internalLogin(req, res);
+  if (path.includes('/viewer-login'))    return viewerLogin(req, res);
+  if (path.includes('/session/refresh')) return sessionRefresh(req, res);
+  if (path.includes('/session'))         return sessionGet(req, res);
+  if (path.includes('/logout'))          return logout(req, res);
 
   return send(res, 404, { error: 'Not Found' });
 }
