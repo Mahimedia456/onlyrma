@@ -1,10 +1,13 @@
 // server.js
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import fs from "fs/promises";
-import { fileURLToPath } from "url";
+import { fileURLToPath } from "url";// ✅ Supabase SERVER client (service role)
+// make sure file exists: root/server/supabaseClient.js
+import { supa } from "./server/supabaseClient.js";
 
 /* ------------------------ paths ------------------------ */
 const __filename = fileURLToPath(import.meta.url);
@@ -177,7 +180,7 @@ if (process.env.NODE_ENV !== "production") {
 app.post("/api/internal-login", async (req, res) => {
   const { email, password } = req.body || {};
   console.log("[internal-login]", email);
-  if (email?.toLowerCase().trim() === "internal@mahimedisolutions.com" && password === "mahimediasolutions") {
+  if (email?.toLowerCase().trim() === "internal@mahimediasolutions.com" && password === "mahimediasolutions") {
     const session = { role: "admin", user: { email, name: "Internal Admin" }, source: "internal" };
     setSessionCookie(res, session);
     return res.json({ ok: true, role: "admin", user: session.user });
@@ -496,6 +499,486 @@ app.delete("/api/rma/emea/stock/:id", requireAdmin, async (req, res) => {
   await writeJson(EMEA_STOCK_FILE, next);
   return res.json({ ok: true });
 });
+/* ------------------------ Rush: Sales by Source Code ------------------------ */
+
+/**
+ * List + basic filters (by source_code, report_date range)
+ * GET /api/rush/sales?source_code=INVADJ&from=2025-01-01&to=2025-12-31
+ */
+app.get("/api/rush/sales", requireAny, async (req, res) => {
+  try {
+    const { source_code, from, to } = req.query;
+    let q = supa.from("rush_sales_by_source").select("*").order("report_date", { ascending: true });
+
+    if (source_code) q = q.eq("source_code", source_code);
+    if (from) q = q.gte("report_date", from);
+    if (to) q = q.lte("report_date", to);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ items: data || [] });
+  } catch (e) {
+    console.error("rush/sales list", e);
+    return res.status(500).json({ error: e.message || "Sales list failed" });
+  }
+});
+
+/**
+ * Create single row
+ */
+app.post("/api/rush/sales", requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const now = new Date().toISOString();
+
+    const payload = {
+      source_code: body.source_code || "",
+      source_code_description: body.source_code_description || "",
+      product_code: body.product_code || "",
+      product_description: body.product_description || "",
+      unit_price: Number(body.unit_price) || 0,
+      units_sold: Number(body.units_sold) || 0,
+      sales_amount: Number(body.sales_amount) || 0,
+      units_returned: Number(body.units_returned) || 0,
+      returns_amount: Number(body.returns_amount) || 0,
+      net_units: Number(body.net_units) || 0,
+      net_sales: Number(body.net_sales) || 0,
+      currency: body.currency || "USD",
+      report_date: body.report_date || null,
+      updated_at: now,
+    };
+
+    const { data, error } = await supa
+      .from("rush_sales_by_source")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json({ ok: true, item: data });
+  } catch (e) {
+    console.error("rush/sales create", e);
+    return res.status(500).json({ error: e.message || "Sales create failed" });
+  }
+});
+
+/**
+ * Update
+ */
+app.put("/api/rush/sales/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const patch = req.body || {};
+    patch.updated_at = new Date().toISOString();
+
+    const { data, error } = await supa
+      .from("rush_sales_by_source")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return res.json({ ok: true, item: data });
+  } catch (e) {
+    console.error("rush/sales update", e);
+    return res.status(500).json({ error: e.message || "Sales update failed" });
+  }
+});
+
+/**
+ * Delete
+ */
+app.delete("/api/rush/sales/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supa
+      .from("rush_sales_by_source")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("rush/sales delete", e);
+    return res.status(500).json({ error: e.message || "Sales delete failed" });
+  }
+});
+
+/**
+ * Import from CSV (headers similar to the columns)
+ * POST /api/rush/sales/import { items: [...] }
+ */
+app.post("/api/rush/sales/import", requireAdmin, async (req, res) => {
+  try {
+    const { items = [] } = req.body || {};
+    if (!items.length) return res.json({ ok: true, imported: 0 });
+
+    const now = new Date().toISOString();
+    const rows = items.map((r) => ({
+      source_code: r.source_code || r["Source Code"] || "",
+      source_code_description: r.source_code_description || r["Source Code Description"] || "",
+      product_code: r.product_code || r["Product"] || "",
+      product_description: r.product_description || r["Description"] || "",
+      unit_price: Number(r.unit_price || r["Unit Price"] || 0),
+      units_sold: Number(r.units_sold || r["# Sold"] || 0),
+      sales_amount: Number(r.sales_amount || r["Sales"] || 0),
+      units_returned: Number(r.units_returned || r["# Returned"] || 0),
+      returns_amount: Number(r.returns_amount || r["Returns"] || 0),
+      net_units: Number(r.net_units || r["# Net Units"] || 0),
+      net_sales: Number(r.net_sales || r["Net Sales"] || 0),
+      currency: r.currency || "USD",
+      report_date: r.report_date || null,
+      created_at: now,
+      updated_at: now,
+    }));
+
+    const { data, error } = await supa
+      .from("rush_sales_by_source")
+      .insert(rows);
+
+    if (error) throw error;
+    return res.json({ ok: true, imported: data?.length || rows.length });
+  } catch (e) {
+    console.error("rush/sales import", e);
+    return res.status(500).json({ error: e.message || "Sales import failed" });
+  }
+});
+
+/**
+ * Export CSV
+ * GET /api/rush/sales/export.csv?source_code=...
+ */
+app.get("/api/rush/sales/export.csv", requireAny, async (req, res) => {
+  try {
+    const { source_code, from, to } = req.query;
+    let q = supa.from("rush_sales_by_source").select("*").order("report_date", { ascending: true });
+    if (source_code) q = q.eq("source_code", source_code);
+    if (from) q = q.gte("report_date", from);
+    if (to) q = q.lte("report_date", to);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = data || [];
+
+    const cols = [
+      "source_code","source_code_description",
+      "product_code","product_description",
+      "unit_price","units_sold","sales_amount",
+      "units_returned","returns_amount","net_units","net_sales",
+      "currency","report_date","created_at","updated_at"
+    ];
+
+    const header = cols.join(",");
+    const lines = rows.map(r =>
+      cols.map(c => csvEscape(r[c])).join(",")
+    );
+    const csv = "\uFEFF" + [header, ...lines].join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=Rush_Sales_${Date.now()}.csv`);
+    return res.send(csv);
+  } catch (e) {
+    console.error("rush/sales export", e);
+    return res.status(500).json({ error: e.message || "Sales export failed" });
+  }
+});
+
+
+/* ------------------------ Rush: Processed Orders ------------------------ */
+
+app.get("/api/rush/orders", requireAny, async (req, res) => {
+  try {
+    const { order_no, from, to } = req.query;
+    let q = supa.from("rush_processed_orders").select("*").order("order_date", { ascending: true });
+    if (order_no) q = q.eq("order_no", order_no);
+    if (from) q = q.gte("order_date", from);
+    if (to) q = q.lte("order_date", to);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ items: data || [] });
+  } catch (e) {
+    console.error("rush/orders list", e);
+    return res.status(500).json({ error: e.message || "Orders list failed" });
+  }
+});
+
+app.post("/api/rush/orders", requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const now = new Date().toISOString();
+    const payload = {
+      order_no: b.order_no || b.Order || "",
+      invoice_part: b.invoice_part || b["Invoice Part"] || "",
+      order_date: b.order_date || b["Order Date"] || null,
+      invoice_date: b.invoice_date || b["Invoice Date"] || null,
+      alternate_order: b.alternate_order || b["Alternate Order"] || "",
+      purchase_order: b.purchase_order || b["Purchase Order"] || "",
+      customer_name: b.customer_name || b["Name"] || "",
+      company: b.company || b["Company"] || "",
+      email: b.email || b["Email"] || "",
+      units_on_order: Number(b.units_on_order || b["Units On Order"] || 0),
+      units_invoiced: Number(b.units_invoiced || b["Units Invoiced"] || 0),
+      units_on_back_order: Number(b.units_on_back_order || b["Units on Back Order"] || 0),
+      carrier_service: b.carrier_service || b["Carrier / Service"] || "",
+      tracking_number: b.tracking_number || b["Tracking Number"] || "",
+      serials: b.serials || b["Serials"] || "",
+      updated_at: now,
+    };
+
+    const { data, error } = await supa
+      .from("rush_processed_orders")
+      .insert(payload)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, item: data });
+  } catch (e) {
+    console.error("rush/orders create", e);
+    return res.status(500).json({ error: e.message || "Orders create failed" });
+  }
+});
+
+app.put("/api/rush/orders/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const patch = { ...(req.body || {}), updated_at: new Date().toISOString() };
+    const { data, error } = await supa
+      .from("rush_processed_orders")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, item: data });
+  } catch (e) {
+    console.error("rush/orders update", e);
+    return res.status(500).json({ error: e.message || "Orders update failed" });
+  }
+});
+
+app.delete("/api/rush/orders/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supa
+      .from("rush_processed_orders")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("rush/orders delete", e);
+    return res.status(500).json({ error: e.message || "Orders delete failed" });
+  }
+});
+
+app.post("/api/rush/orders/import", requireAdmin, async (req, res) => {
+  try {
+    const { items = [] } = req.body || {};
+    if (!items.length) return res.json({ ok: true, imported: 0 });
+
+    const now = new Date().toISOString();
+    const rows = items.map((r) => ({
+      order_no: r.order_no || r["Order"] || "",
+      invoice_part: r.invoice_part || r["Invoice Part"] || "",
+      order_date: r.order_date || r["Order Date"] || null,
+      invoice_date: r.invoice_date || r["Invoice Date"] || null,
+      alternate_order: r.alternate_order || r["Alternate Order"] || "",
+      purchase_order: r.purchase_order || r["Purchase Order"] || "",
+      customer_name: r.customer_name || r["Name"] || "",
+      company: r.company || r["Company"] || "",
+      email: r.email || r["Email"] || "",
+      units_on_order: Number(r.units_on_order || r["Units On Order"] || 0),
+      units_invoiced: Number(r.units_invoiced || r["Units Invoiced"] || 0),
+      units_on_back_order: Number(r.units_on_back_order || r["Units on Back Order"] || 0),
+      carrier_service: r.carrier_service || r["Carrier / Service"] || "",
+      tracking_number: r.tracking_number || r["Tracking Number"] || "",
+      serials: r.serials || r["Serials"] || "",
+      created_at: now,
+      updated_at: now,
+    }));
+
+    const { data, error } = await supa
+      .from("rush_processed_orders")
+      .insert(rows);
+    if (error) throw error;
+
+    return res.json({ ok: true, imported: data?.length || rows.length });
+  } catch (e) {
+    console.error("rush/orders import", e);
+    return res.status(500).json({ error: e.message || "Orders import failed" });
+  }
+});
+
+app.get("/api/rush/orders/export.csv", requireAny, async (req, res) => {
+  try {
+    const { order_no, from, to } = req.query;
+    let q = supa.from("rush_processed_orders").select("*").order("order_date", { ascending: true });
+    if (order_no) q = q.eq("order_no", order_no);
+    if (from) q = q.gte("order_date", from);
+    if (to) q = q.lte("order_date", to);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = data || [];
+
+    const cols = [
+      "order_no","invoice_part","order_date","invoice_date",
+      "alternate_order","purchase_order","customer_name","company","email",
+      "units_on_order","units_invoiced","units_on_back_order",
+      "carrier_service","tracking_number","serials","created_at","updated_at"
+    ];
+    const header = cols.join(",");
+    const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
+    const csv = "\uFEFF" + [header, ...lines].join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=Rush_Processed_Orders_${Date.now()}.csv`);
+    return res.send(csv);
+  } catch (e) {
+    console.error("rush/orders export", e);
+    return res.status(500).json({ error: e.message || "Orders export failed" });
+  }
+});
+/* ------------------------ Rush: Inventory ------------------------ */
+
+app.get("/api/rush/inventory", requireAny, async (req, res) => {
+  try {
+    const { stock_number } = req.query;
+    let q = supa.from("rush_inventory").select("*").order("stock_number", { ascending: true });
+    if (stock_number) q = q.eq("stock_number", stock_number);
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ items: data || [] });
+  } catch (e) {
+    console.error("rush/inventory list", e);
+    return res.status(500).json({ error: e.message || "Inventory list failed" });
+  }
+});
+
+app.post("/api/rush/inventory", requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const now = new Date().toISOString();
+    const payload = {
+      stock_number: b.stock_number || b["Stock Number"] || "",
+      description: b.description || b["Description"] || "",
+      upc: b.upc || b["UPC"] || "",
+      class: b.class || b["Class"] || "",
+      total_net_on_shelf: Number(b.total_net_on_shelf || b["Total Net on Shelf"] || 0),
+      available: Number(b.available || b["Available"] || 0),
+      committed: Number(b.committed || b["Committed"] || 0),
+      back_ordered: Number(b.back_ordered || b["Back Ordered"] || 0),
+      list_price: Number(b.list_price || b["List Price"] || 0),
+      currency: b.currency || "USD",
+      updated_at: now,
+    };
+    const { data, error } = await supa
+      .from("rush_inventory")
+      .insert(payload)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, item: data });
+  } catch (e) {
+    console.error("rush/inventory create", e);
+    return res.status(500).json({ error: e.message || "Inventory create failed" });
+  }
+});
+
+app.put("/api/rush/inventory/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const patch = { ...(req.body || {}), updated_at: new Date().toISOString() };
+    const { data, error } = await supa
+      .from("rush_inventory")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, item: data });
+  } catch (e) {
+    console.error("rush/inventory update", e);
+    return res.status(500).json({ error: e.message || "Inventory update failed" });
+  }
+});
+
+app.delete("/api/rush/inventory/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supa
+      .from("rush_inventory")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("rush/inventory delete", e);
+    return res.status(500).json({ error: e.message || "Inventory delete failed" });
+  }
+});
+
+app.post("/api/rush/inventory/import", requireAdmin, async (req, res) => {
+  try {
+    const { items = [] } = req.body || {};
+    if (!items.length) return res.json({ ok: true, imported: 0 });
+    const now = new Date().toISOString();
+
+    const rows = items.map((r) => ({
+      stock_number: r.stock_number || r["Stock Number"] || "",
+      description: r.description || r["Description"] || "",
+      upc: r.upc || r["UPC"] || "",
+      class: r.class || r["Class"] || "",
+      total_net_on_shelf: Number(r.total_net_on_shelf || r["Total Net on Shelf"] || 0),
+      available: Number(r.available || r["Available"] || 0),
+      committed: Number(r.committed || r["Committed"] || 0),
+      back_ordered: Number(r.back_ordered || r["Back Ordered"] || 0),
+      list_price: Number(r.list_price || (r["List Price"] || "").replace(/\$/g, "") || 0),
+      currency: r.currency || "USD",
+      created_at: now,
+      updated_at: now,
+    }));
+
+    const { data, error } = await supa
+      .from("rush_inventory")
+      .insert(rows);
+    if (error) throw error;
+
+    return res.json({ ok: true, imported: data?.length || rows.length });
+  } catch (e) {
+    console.error("rush/inventory import", e);
+    return res.status(500).json({ error: e.message || "Inventory import failed" });
+  }
+});
+
+app.get("/api/rush/inventory/export.csv", requireAny, async (req, res) => {
+  try {
+    const { stock_number } = req.query;
+    let q = supa.from("rush_inventory").select("*").order("stock_number", { ascending: true });
+    if (stock_number) q = q.eq("stock_number", stock_number);
+    const { data, error } = await q;
+    if (error) throw error;
+    const rows = data || [];
+
+    const cols = [
+      "stock_number","description","upc","class",
+      "total_net_on_shelf","available","committed","back_ordered",
+      "list_price","currency","created_at","updated_at"
+    ];
+    const header = cols.join(",");
+    const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
+    const csv = "\uFEFF" + [header, ...lines].join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=Rush_Inventory_${Date.now()}.csv`);
+    return res.send(csv);
+  } catch (e) {
+    console.error("rush/inventory export", e);
+    return res.status(500).json({ error: e.message || "Inventory export failed" });
+  }
+});
+
 
 /* ------------------------ static (prod) ------------------------ */
 app.use(express.static(DIST_DIR));
