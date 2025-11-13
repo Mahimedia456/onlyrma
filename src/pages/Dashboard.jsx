@@ -1,3 +1,5 @@
+// src/pages/Dashboard.jsx
+
 import { useEffect, useMemo, useState } from "react";
 import { FiMenu } from "react-icons/fi";
 import Sidebar from "@/components/Sidebar";
@@ -14,6 +16,9 @@ import RushInventory from "@/pages/RushInventory";
 import RushProcessedOrders from "@/pages/RushProcessedOrders";
 import RushSalesBySource from "@/pages/RushSalesBySource";
 
+// Reports
+import RushReports from "@/pages/RushReports";
+
 export default function Dashboard() {
   const role = useMemo(
     () => (localStorage.getItem("role") || "admin").toLowerCase(),
@@ -21,27 +26,26 @@ export default function Dashboard() {
   );
   const isViewer = role === "viewer";
 
-  const [view, setView] = useState(isViewer ? "rma-entry" : "rma-entry");
+  const [view, setView] = useState("rma-entry");
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { logout } = useAuth();
-
-  useEffect(() => {
-    if (isViewer && view !== "rma-entry") setView("rma-entry");
-  }, [isViewer, view]);
 
   const handleSelect = (key) => {
     setSidebarOpen(false);
 
-    // RMA views
+    // RMA
     if (key === "rma:entry") setView("rma-entry");
     if (key === "rma:emea") setView("rma-emea");
     if (key === "rma:us") setView("rma-us");
     if (key === "rma:product") setView("rma-product");
 
-    // Rush Order views (admin only)
+    // Rush
     if (key === "rush:sales") setView("rush-sales");
     if (key === "rush:processed") setView("rush-processed");
     if (key === "rush:inventory") setView("rush-inventory");
+
+    // REPORTS
+    if (key === "reports:dashboard") setView("reports-dashboard");
   };
 
   return (
@@ -66,7 +70,7 @@ export default function Dashboard() {
           <img src="/atomosf.png" alt="Angelbird" className="h-6" />
         </div>
 
-        {/* RMA views */}
+        {/* RMA Pages */}
         {view === "rma-entry" && (
           <div className="bg-white rounded-lg shadow-md p-4">
             <RmaEntry />
@@ -88,22 +92,27 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Rush Order views (admin only) */}
+        {/* Rush */}
         {!isViewer && view === "rush-sales" && (
           <div className="bg-white rounded-lg shadow-md p-4">
-          <RushSalesBySource />
+            <RushSalesBySource />
           </div>
         )}
-
         {!isViewer && view === "rush-processed" && (
           <div className="bg-white rounded-lg shadow-md p-4">
             <RushProcessedOrders />
           </div>
         )}
-
         {!isViewer && view === "rush-inventory" && (
           <div className="bg-white rounded-lg shadow-md p-4">
             <RushInventory />
+          </div>
+        )}
+
+        {/* Reports Dashboard */}
+        {!isViewer && view === "reports-dashboard" && (
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <RushReports />
           </div>
         )}
       </main>
