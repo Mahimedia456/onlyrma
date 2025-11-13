@@ -58,6 +58,11 @@ function RushInventoryList({ refreshKey }) {
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
 
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const [yearFilter, setYearFilter] = useState("");
+
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
@@ -92,7 +97,17 @@ function RushInventoryList({ refreshKey }) {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, fromMonth, toMonth]);
+  }, [search, fromMonth, toMonth, fromDate, toDate, yearFilter, pageSize]);
+
+  // build year dropdown from entry_date
+  const yearOptions = useMemo(() => {
+    const ys = new Set();
+    for (const r of rows) {
+      const y = getYear(r.entry_date);
+      if (y) ys.add(y);
+    }
+    return Array.from(ys).sort((a, b) => a - b);
+  }, [rows]);
 
   const filtered = useMemo(() => {
     let list = rows;
@@ -107,10 +122,20 @@ function RushInventoryList({ refreshKey }) {
       );
     }
 
-    // month range filter using created_at if present
+    // year filter (entry_date)
+    if (yearFilter) {
+      const yNum = Number(yearFilter);
+      list = list.filter((r) => {
+        const y = getYear(r.entry_date);
+        if (!y) return false;
+        return y === yNum;
+      });
+    }
+
+    // month range filter using entry_date
     if (fromMonth || toMonth) {
       list = list.filter((r) => {
-        const key = getMonthKey(r.created_at);
+        const key = getMonthKey(r.entry_date);
         if (!key) return true; // if no date, don't exclude
         if (fromMonth && key < fromMonth) return false;
         if (toMonth && key > toMonth) return false;
@@ -118,8 +143,19 @@ function RushInventoryList({ refreshKey }) {
       });
     }
 
+    // date range filter using entry_date
+    if (fromDate || toDate) {
+      list = list.filter((r) => {
+        const s = normalizeDate(r.entry_date);
+        if (!s) return true;
+        if (fromDate && s < fromDate) return false;
+        if (toDate && s > toDate) return false;
+        return true;
+      });
+    }
+
     return list;
-  }, [rows, search, fromMonth, toMonth]);
+  }, [rows, search, yearFilter, fromMonth, toMonth, fromDate, toDate]);
 
   // pagination
   const total = filtered.length;
@@ -205,6 +241,8 @@ function RushInventoryList({ refreshKey }) {
       const h = (name) =>
         headers.find((x) => x.toLowerCase() === name.toLowerCase());
 
+      const todayIso = new Date().toISOString().slice(0, 10);
+
       const rowsToInsert = records.map((r) => ({
         stock_number: r[h("Stock Number")] || "",
         description: r[h("Description")] || "",
@@ -217,6 +255,7 @@ function RushInventoryList({ refreshKey }) {
         list_price: Number(
           String(r[h("List Price")] || "0").replace(/[^\d.-]/g, "")
         ),
+        entry_date: normalizeDate(r[h("Entry Date")] || todayIso), // 🔑
       }));
 
       setImportMsg(`Importing ${rowsToInsert.length} row(s) into Supabase…`);
@@ -246,6 +285,15 @@ function RushInventoryList({ refreshKey }) {
     }
   }
 
+  function clearFilters() {
+    setSearch("");
+    setFromMonth("");
+    setToMonth("");
+    setFromDate("");
+    setToDate("");
+    setYearFilter("");
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters + actions */}
@@ -260,8 +308,26 @@ function RushInventoryList({ refreshKey }) {
           />
         </div>
 
+        {/* Year selection (entry_date) */}
         <div>
-          <div className="text-xs font-medium mb-1">From Month</div>
+          <div className="text-xs font-medium mb-1">Year (Entry Date)</div>
+          <select
+            className="border rounded px-3 py-2"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+          >
+            <option value="">All Years</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Month range (entry_date) */}
+        <div>
+          <div className="text-xs font-medium mb-1">From Month (Entry)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
@@ -271,12 +337,33 @@ function RushInventoryList({ refreshKey }) {
         </div>
 
         <div>
-          <div className="text-xs font-medium mb-1">To Month</div>
+          <div className="text-xs font-medium mb-1">To Month (Entry)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
             value={toMonth}
             onChange={(e) => setToMonth(e.target.value)}
+          />
+        </div>
+
+        {/* Date range (entry_date) */}
+        <div>
+          <div className="text-xs font-medium mb-1">From Date (Entry)</div>
+          <input
+            type="date"
+            className="border rounded px-3 py-2"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <div className="text-xs font-medium mb-1">To Date (Entry)</div>
+          <input
+            type="date"
+            className="border rounded px-3 py-2"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
           />
         </div>
 
@@ -294,6 +381,13 @@ function RushInventoryList({ refreshKey }) {
               <option value={100}>100</option>
             </select>
           </div>
+
+          <button
+            onClick={clearFilters}
+            className="rounded border px-3 py-2 text-xs hover:bg-gray-50"
+          >
+            Clear filters
+          </button>
 
           <button
             onClick={fetchRows}
@@ -446,6 +540,7 @@ function RushInventoryForm({ onCreated }) {
       committed: "",
       back_ordered: "",
       list_price: "",
+      entry_date: "", // 🔑
     };
   }
 
@@ -457,6 +552,8 @@ function RushInventoryForm({ onCreated }) {
     setSaving(true);
     setErr("");
     try {
+      const todayIso = new Date().toISOString().slice(0, 10);
+
       const payload = {
         ...form,
         total_net_on_shelf: Number(form.total_net_on_shelf || 0),
@@ -466,6 +563,7 @@ function RushInventoryForm({ onCreated }) {
         list_price: Number(
           String(form.list_price || "0").replace(/[^\d.-]/g, "")
         ),
+        entry_date: normalizeDate(form.entry_date || todayIso),
       };
 
       const { error } = await supabase.from(TABLE).insert(payload);
@@ -511,8 +609,16 @@ function RushInventoryForm({ onCreated }) {
       {field("Available", "available", form.available, updateForm, "number")}
 
       {field("Committed", "committed", form.committed, updateForm, "number")}
-      {field("Back Ordered", "back_ordered", form.back_ordered, updateForm, "number")}
+      {field(
+        "Back Ordered",
+        "back_ordered",
+        form.back_ordered,
+        updateForm,
+        "number"
+      )}
       {field("List Price", "list_price", form.list_price, updateForm)}
+
+      {field("Entry Date", "entry_date", form.entry_date, updateForm, "date")}
 
       <div className="md:col-span-3 flex justify-end gap-2">
         <button
@@ -544,7 +650,7 @@ function field(label, key, value, update, type = "text") {
       <input
         type={type}
         className="w-full border rounded px-3 py-2"
-        value={value}
+        value={type === "date" ? (value || "") : value}
         onChange={update(key)}
       />
     </label>
@@ -572,6 +678,23 @@ function getMonthKey(v) {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getYear(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getFullYear();
+}
+
+function normalizeDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
 }
 
 /* Lightweight CSV parser */

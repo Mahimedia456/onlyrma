@@ -57,6 +57,11 @@ function RushSalesBySourceList({ refreshKey }) {
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
 
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const [yearFilter, setYearFilter] = useState("");
+
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
@@ -76,7 +81,7 @@ function RushSalesBySourceList({ refreshKey }) {
       const { data, error } = await supabase
         .from(TABLE)
         .select("*")
-        .order("report_date", { ascending: false })
+        .order("entry_date", { ascending: false }) // 🔑 filter on entry_date
         .order("id", { ascending: false });
 
       if (error) throw error;
@@ -89,9 +94,20 @@ function RushSalesBySourceList({ refreshKey }) {
     }
   }
 
+  // reset page when filters / page size change
   useEffect(() => {
     setPage(1);
-  }, [search, fromMonth, toMonth]);
+  }, [search, fromMonth, toMonth, fromDate, toDate, yearFilter, pageSize]);
+
+  // build year dropdown from entry_date
+  const yearOptions = useMemo(() => {
+    const ys = new Set();
+    for (const r of rows) {
+      const y = getYear(r.entry_date);
+      if (y) ys.add(y);
+    }
+    return Array.from(ys).sort((a, b) => a - b);
+  }, [rows]);
 
   const filtered = useMemo(() => {
     let list = rows;
@@ -110,9 +126,20 @@ function RushSalesBySourceList({ refreshKey }) {
       );
     }
 
+    // year filter (entry_date)
+    if (yearFilter) {
+      const yNum = Number(yearFilter);
+      list = list.filter((r) => {
+        const y = getYear(r.entry_date);
+        if (!y) return false;
+        return y === yNum;
+      });
+    }
+
+    // month range (entry_date)
     if (fromMonth || toMonth) {
       list = list.filter((r) => {
-        const key = getMonthKey(r.report_date);
+        const key = getMonthKey(r.entry_date);
         if (!key) return true;
         if (fromMonth && key < fromMonth) return false;
         if (toMonth && key > toMonth) return false;
@@ -120,8 +147,19 @@ function RushSalesBySourceList({ refreshKey }) {
       });
     }
 
+    // date range (entry_date)
+    if (fromDate || toDate) {
+      list = list.filter((r) => {
+        const s = normalizeDate(r.entry_date);
+        if (!s) return true;
+        if (fromDate && s < fromDate) return false;
+        if (toDate && s > toDate) return false;
+        return true;
+      });
+    }
+
     return list;
-  }, [rows, search, fromMonth, toMonth]);
+  }, [rows, search, yearFilter, fromMonth, toMonth, fromDate, toDate]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -214,6 +252,8 @@ function RushSalesBySourceList({ refreshKey }) {
       const h = (name) =>
         headers.find((x) => x.toLowerCase() === name.toLowerCase());
 
+      const todayIso = new Date().toISOString().slice(0, 10);
+
       const rowsToInsert = records.map((r) => ({
         source_code: r[h("Source Code")] || "",
         source_code_description: r[h("Source Code Description")] || "",
@@ -228,6 +268,7 @@ function RushSalesBySourceList({ refreshKey }) {
         net_sales: Number(r[h("Net Sales")] || 0),
         currency: r[h("Currency")] || "USD",
         report_date: normalizeDate(r[h("Report Date")]),
+        entry_date: normalizeDate(r[h("Entry Date")] || todayIso), // 🔑
       }));
 
       setImportMsg(`Importing ${rowsToInsert.length} row(s) into Supabase…`);
@@ -257,6 +298,15 @@ function RushSalesBySourceList({ refreshKey }) {
     }
   }
 
+  function clearFilters() {
+    setSearch("");
+    setFromMonth("");
+    setToMonth("");
+    setFromDate("");
+    setToDate("");
+    setYearFilter("");
+  }
+
   return (
     <div className="space-y-4">
       {/* Filters + actions */}
@@ -271,8 +321,26 @@ function RushSalesBySourceList({ refreshKey }) {
           />
         </div>
 
+        {/* Year selection (entry_date) */}
         <div>
-          <div className="text-xs font-medium mb-1">From Month (Report)</div>
+          <div className="text-xs font-medium mb-1">Year (Entry Date)</div>
+          <select
+            className="border rounded px-3 py-2"
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+          >
+            <option value="">All Years</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Month range (entry_date) */}
+        <div>
+          <div className="text-xs font-medium mb-1">From Month (Entry)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
@@ -282,12 +350,33 @@ function RushSalesBySourceList({ refreshKey }) {
         </div>
 
         <div>
-          <div className="text-xs font-medium mb-1">To Month (Report)</div>
+          <div className="text-xs font-medium mb-1">To Month (Entry)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
             value={toMonth}
             onChange={(e) => setToMonth(e.target.value)}
+          />
+        </div>
+
+        {/* Date range (entry_date) */}
+        <div>
+          <div className="text-xs font-medium mb-1">From Date (Entry)</div>
+          <input
+            type="date"
+            className="border rounded px-3 py-2"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <div className="text-xs font-medium mb-1">To Date (Entry)</div>
+          <input
+            type="date"
+            className="border rounded px-3 py-2"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
           />
         </div>
 
@@ -304,6 +393,13 @@ function RushSalesBySourceList({ refreshKey }) {
               <option value={100}>100</option>
             </select>
           </div>
+
+          <button
+            onClick={clearFilters}
+            className="rounded border px-3 py-2 text-xs hover:bg-gray-50"
+          >
+            Clear filters
+          </button>
 
           <button
             onClick={fetchRows}
@@ -464,6 +560,7 @@ function RushSalesBySourceForm({ onCreated }) {
       net_sales: "",
       currency: "USD",
       report_date: "",
+      entry_date: "", // 🔑
     };
   }
 
@@ -475,6 +572,8 @@ function RushSalesBySourceForm({ onCreated }) {
     setSaving(true);
     setErr("");
     try {
+      const todayIso = new Date().toISOString().slice(0, 10);
+
       const payload = {
         ...form,
         unit_price: Number(form.unit_price || 0),
@@ -485,6 +584,7 @@ function RushSalesBySourceForm({ onCreated }) {
         net_units: Number(form.net_units || 0),
         net_sales: Number(form.net_sales || 0),
         report_date: normalizeDate(form.report_date),
+        entry_date: normalizeDate(form.entry_date || todayIso),
       };
 
       const { error } = await supabase.from(TABLE).insert(payload);
@@ -560,6 +660,7 @@ function RushSalesBySourceForm({ onCreated }) {
       {field("Currency", "currency", form.currency, updateForm)}
 
       {field("Report Date", "report_date", form.report_date, updateForm, "date")}
+      {field("Entry Date", "entry_date", form.entry_date, updateForm, "date")}
 
       <div className="md:col-span-3 flex justify-end gap-2">
         <button
@@ -626,6 +727,13 @@ function getMonthKey(v) {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getYear(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getFullYear();
 }
 
 function normalizeDate(v) {
