@@ -16,6 +16,7 @@ import RushSalesBySource from "@/pages/RushSalesBySource";
 
 // Reports
 import RushReports from "@/pages/RushReports";
+import RmaReports from "@/pages/RmaReports";
 import RmaRegionReports from "@/pages/RmaRegionReports";
 import RushRmaCompare from "@/pages/RushRmaCompare";
 import RushRmaProductCompare from "@/pages/RushRmaProductCompare";
@@ -47,9 +48,11 @@ export default function Dashboard() {
 
     // Reports
     if (key === "reports:dashboard") setView("reports-dashboard");
+    if (key === "reports:rma") setView("reports-rma");
     if (key === "reports:rma-regions") setView("reports-rma-regions");
     if (key === "reports:comparison") setView("reports-comparison");
-    if (key === "reports:product-comparison") setView("reports-product-comparison");
+    if (key === "reports:product-comparison")
+      setView("reports-product-comparison");
   };
 
   return (
@@ -117,6 +120,11 @@ export default function Dashboard() {
         {!isViewer && view === "reports-dashboard" && (
           <Page>
             <RushReports />
+          </Page>
+        )}
+        {!isViewer && view === "reports-rma" && (
+          <Page>
+            <RmaReports />
           </Page>
         )}
         {!isViewer && view === "reports-rma-regions" && (

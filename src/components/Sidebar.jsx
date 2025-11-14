@@ -163,6 +163,14 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
                     Rush Reports
                   </button>
 
+                  {/* NEW: RMA Reports right after Rush Reports */}
+                  <button
+                    onClick={() => go("reports:rma")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
+                    RMA Reports
+                  </button>
+
                   <button
                     onClick={() => go("reports:rma-regions")}
                     className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
