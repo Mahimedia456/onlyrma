@@ -9,15 +9,14 @@ import jsPDF from "jspdf";
 export default function RushReports() {
   const [loading, setLoading] = useState(true);
 
-  // filters
+  // Filters
   const [year, setYear] = useState("");
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  // datasets
-  const [master, setMaster] = useState([]);
+  // Live datasets
   const [orders, setOrders] = useState([]);
   const [sales, setSales] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -25,7 +24,7 @@ export default function RushReports() {
   const reportRef = useRef(null);
 
   /* ───────────────────────────────────────────────
-        LOAD DATA
+      LOAD DATA FROM 3 TABLES ONLY
   ─────────────────────────────────────────────── */
   useEffect(() => {
     loadData();
@@ -34,14 +33,12 @@ export default function RushReports() {
   async function loadData() {
     setLoading(true);
 
-    const [m, o, s, i] = await Promise.all([
-      supabase.from("rush_reports_master").select("*"),
+    const [o, s, i] = await Promise.all([
       supabase.from("rush_processed_orders").select("*"),
       supabase.from("rush_sales_by_source").select("*"),
       supabase.from("rush_inventory").select("*"),
     ]);
 
-    if (!m.error) setMaster(m.data || []);
     if (!o.error) setOrders(o.data || []);
     if (!s.error) setSales(s.data || []);
     if (!i.error) setInventory(i.data || []);
@@ -50,122 +47,204 @@ export default function RushReports() {
   }
 
   /* ───────────────────────────────────────────────
-        YEAR DROPDOWN OPTIONS
+      YEAR OPTIONS from created_at
   ─────────────────────────────────────────────── */
   const yearOptions = useMemo(() => {
-    const setY = new Set(master.map((x) => x.report_year));
-    return Array.from(setY).sort((a, b) => a - b);
-  }, [master]);
+    const setY = new Set();
+
+    orders.forEach((x) => setY.add(getYear(x.created_at)));
+    sales.forEach((x) => setY.add(getYear(x.created_at)));
+
+    return Array.from(setY)
+      .filter(Boolean)
+      .sort((a, b) => a - b);
+  }, [orders, sales]);
 
   /* ───────────────────────────────────────────────
-        FILTER LOGIC
+      APPLY FILTERS TO LIVE DATA (created_at)
   ─────────────────────────────────────────────── */
-  function filterData() {
-    let m = [...master];
 
-    // Year filter
-    if (year) {
-      m = m.filter((x) => x.report_year === Number(year));
-    }
+  function applyFilters(data) {
+    return data.filter((row) => {
+      const d = normalizeDate(row.created_at);
+      if (!d) return false;
 
-    // Month range
-    if (fromMonth || toMonth) {
-      m = m.filter((x) => {
-        const mm = x.report_month;
-        if (fromMonth && mm < Number(fromMonth)) return false;
-        if (toMonth && mm > Number(toMonth)) return false;
-        return true;
-      });
-    }
+      const y = getYear(d);
+      const m = getMonth(d);
 
-    // Date range affects orders + sales
-    let filteredOrders = [...orders];
-    let filteredSales = [...sales];
+      if (year && y !== Number(year)) return false;
+      if (fromMonth && m < Number(fromMonth)) return false;
+      if (toMonth && m > Number(toMonth)) return false;
 
-    if (fromDate) {
-      filteredOrders = filteredOrders.filter(
-        (x) => x.entry_date >= fromDate
-      );
-      filteredSales = filteredSales.filter(
-        (x) => x.report_date >= fromDate
-      );
-    }
+      if (fromDate && d < fromDate) return false;
+      if (toDate && d > toDate) return false;
 
-    if (toDate) {
-      filteredOrders = filteredOrders.filter(
-        (x) => x.entry_date <= toDate
-      );
-      filteredSales = filteredSales.filter(
-        (x) => x.report_date <= toDate
-      );
-    }
-
-    return { m, filteredOrders, filteredSales };
+      return true;
+    });
   }
 
-  const { m: reportData, filteredOrders, filteredSales } = filterData();
+  const filteredOrders = applyFilters(orders);
+  const filteredSales = applyFilters(sales);
 
   /* ───────────────────────────────────────────────
-        KPI
+      MONTHLY AGGREGATED REPORT
+  ─────────────────────────────────────────────── */
+  const monthlyReport = useMemo(() => {
+    const bucket = {};
+
+    // Orders aggregation (rush_processed_orders)
+    filteredOrders.forEach((o) => {
+      const y = getYear(o.created_at);
+      const m = getMonth(o.created_at);
+      if (!y || !m) return;
+
+      const key = `${y}-${m}`;
+
+      if (!bucket[key]) {
+        bucket[key] = {
+          year: y,
+          month: m,
+          total_orders: 0,
+          total_sales: 0,
+          net_sales: 0,
+          units_on_order: 0,
+          units_invoiced: 0,
+          units_back_order: 0,
+          units_sold: 0,
+          units_returned: 0,
+        };
+      }
+
+      // 1 row = 1 order
+      bucket[key].total_orders += 1;
+      bucket[key].units_on_order += Number(o.units_on_order || 0);
+      bucket[key].units_invoiced += Number(o.units_invoiced || 0);
+      bucket[key].units_back_order += Number(o.units_on_back_order || 0);
+    });
+
+    // Sales aggregation (rush_sales_by_source)
+    filteredSales.forEach((s) => {
+      const y = getYear(s.created_at);
+      const m = getMonth(s.created_at);
+      if (!y || !m) return;
+
+      const key = `${y}-${m}`;
+
+      if (!bucket[key]) {
+        bucket[key] = {
+          year: y,
+          month: m,
+          total_orders: 0,
+          total_sales: 0,
+          net_sales: 0,
+          units_on_order: 0,
+          units_invoiced: 0,
+          units_back_order: 0,
+          units_sold: 0,
+          units_returned: 0,
+        };
+      }
+
+      bucket[key].total_sales += Number(s.sales_amount || 0);
+      bucket[key].net_sales += Number(s.net_sales || 0);
+      bucket[key].units_sold += Number(s.units_sold || 0);
+      bucket[key].units_returned += Number(s.units_returned || 0);
+    });
+
+    return Object.values(bucket).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.month - b.month;
+    });
+  }, [filteredOrders, filteredSales]);
+
+  /* ───────────────────────────────────────────────
+      KPI LIVE CALCULATIONS
   ─────────────────────────────────────────────── */
   const kpi = {
-    totalOrders: reportData.reduce((a, b) => a + b.total_orders, 0),
-    totalUnitsOnOrder: reportData.reduce((a, b) => a + b.total_units_on_order, 0),
-    totalUnitsInvoiced: reportData.reduce((a, b) => a + b.total_units_invoiced, 0),
-    totalBackOrder: reportData.reduce((a, b) => a + b.total_units_on_back_order, 0),
-    totalSales: reportData.reduce((a, b) => a + Number(b.total_sales), 0),
-    netSales: reportData.reduce((a, b) => a + Number(b.total_net_sales), 0),
-    unitsSold: reportData.reduce((a, b) => a + Number(b.total_units_sold), 0),
-    unitsReturned: reportData.reduce((a, b) => a + Number(b.total_units_returned), 0),
-    inventoryTotal: inventory.reduce((a, b) => a + Number(b.total_net_on_shelf), 0),
-    inventoryAvailable: inventory.reduce((a, b) => a + Number(b.available), 0),
-    inventoryCommitted: inventory.reduce((a, b) => a + Number(b.committed), 0),
+    // From processed_orders + sales (monthlyReport)
+    totalOrders: monthlyReport.reduce((a, b) => a + b.total_orders, 0),
+    unitsOnOrder: monthlyReport.reduce((a, b) => a + b.units_on_order, 0),
+    unitsInvoiced: monthlyReport.reduce((a, b) => a + b.units_invoiced, 0),
+    backOrders: monthlyReport.reduce((a, b) => a + b.units_back_order, 0),
+    totalSales: monthlyReport.reduce((a, b) => a + b.total_sales, 0),
+    netSales: monthlyReport.reduce((a, b) => a + b.net_sales, 0),
+    unitsSold: monthlyReport.reduce((a, b) => a + b.units_sold, 0),
+    unitsReturned: monthlyReport.reduce((a, b) => a + b.units_returned, 0),
+
+    // From inventory table
+    inventoryTotal: inventory.reduce(
+      (a, b) => a + Number(b.total_net_on_shelf || 0),
+      0
+    ),
+    availableStock: inventory.reduce(
+      (a, b) => a + Number(b.available || 0),
+      0
+    ),
   };
 
   /* ───────────────────────────────────────────────
-        CHARTS
+      CHARTS
   ─────────────────────────────────────────────── */
 
+  const categories = monthlyReport.map((x) => `${x.year}-${pad(x.month)}`);
+
   const ordersChart = {
-    series: [{ name: "Orders", data: reportData.map((x) => x.total_orders) }],
+    series: [{ name: "Orders", data: monthlyReport.map((x) => x.total_orders) }],
     options: {
-      chart: { id: "orders", toolbar: { show: false } },
-      xaxis: {
-        categories: reportData.map(
-          (x) => `${x.report_year}-${String(x.report_month).padStart(2, "0")}`
-        ),
-      },
+      chart: { toolbar: { show: false } },
+      xaxis: { categories },
     },
   };
 
   const netSalesChart = {
-    series: [{ name: "Net Sales", data: reportData.map((x) => x.total_net_sales) }],
+    series: [{ name: "Net Sales", data: monthlyReport.map((x) => x.net_sales) }],
     options: {
       chart: { type: "bar", toolbar: { show: false } },
-      xaxis: {
-        categories: reportData.map(
-          (x) => `${x.report_year}-${String(x.report_month).padStart(2, "0")}`
-        ),
-      },
+      xaxis: { categories },
     },
   };
 
-  // Sales by Source Code Pie
-  const salesBySourceMap = {};
+  // NEW: Units on order vs invoiced vs back order
+  const unitsOrdersChart = {
+    series: [
+      { name: "Units On Order", data: monthlyReport.map((x) => x.units_on_order) },
+      { name: "Units Invoiced", data: monthlyReport.map((x) => x.units_invoiced) },
+      { name: "Back Orders", data: monthlyReport.map((x) => x.units_back_order) },
+    ],
+    options: {
+      chart: { type: "bar", stacked: true, toolbar: { show: false } },
+      xaxis: { categories },
+    },
+  };
+
+  // NEW: Units sold vs returned
+  const unitsSalesChart = {
+    series: [
+      { name: "Units Sold", data: monthlyReport.map((x) => x.units_sold) },
+      { name: "Units Returned", data: monthlyReport.map((x) => x.units_returned) },
+    ],
+    options: {
+      chart: { type: "bar", toolbar: { show: false } },
+      xaxis: { categories },
+    },
+  };
+
+  // Sales by source (pie)
+  const sourceMap = {};
   filteredSales.forEach((s) => {
-    salesBySourceMap[s.source_code] =
-      (salesBySourceMap[s.source_code] || 0) + Number(s.net_sales);
+    sourceMap[s.source_code] =
+      (sourceMap[s.source_code] || 0) + Number(s.net_sales || 0);
   });
 
   const salesBySourceChart = {
-    series: Object.values(salesBySourceMap),
+    series: Object.values(sourceMap),
     options: {
-      labels: Object.keys(salesBySourceMap),
+      labels: Object.keys(sourceMap),
       chart: { type: "pie" },
     },
   };
 
-  // Inventory stacked bar chart
+  // Inventory chart
   const inventoryChart = {
     series: [
       { name: "Available", data: inventory.map((i) => i.available) },
@@ -174,19 +253,15 @@ export default function RushReports() {
     ],
     options: {
       chart: { type: "bar", stacked: true },
-      xaxis: {
-        categories: inventory.map((i) => i.stock_number),
-      },
+      xaxis: { categories: inventory.map((i) => i.stock_number) },
     },
   };
 
   /* ───────────────────────────────────────────────
-        PDF EXPORT
+      PDF EXPORT
   ─────────────────────────────────────────────── */
   async function downloadPDF() {
-    const input = reportRef.current;
-    const canvas = await html2canvas(input, { scale: 2 });
-
+    const canvas = await html2canvas(reportRef.current, { scale: 2 });
     const pdf = new jsPDF("p", "mm", "a4");
     const img = canvas.toDataURL("image/png");
 
@@ -197,13 +272,7 @@ export default function RushReports() {
     pdf.save("rush_report.pdf");
   }
 
-  if (loading) {
-    return <div className="p-6 text-center">Loading Reports…</div>;
-  }
-
-  /* ───────────────────────────────────────────────
-        MONTH SELECT OPTIONS
-  ─────────────────────────────────────────────── */
+  /* Month names */
   const months = [
     ["01", "January"],
     ["02", "February"],
@@ -219,165 +288,197 @@ export default function RushReports() {
     ["12", "December"],
   ];
 
+  function clearFilters() {
+    setYear("");
+    setFromMonth("");
+    setToMonth("");
+    setFromDate("");
+    setToDate("");
+  }
+
+  if (loading) return <div className="p-6 text-center">Loading...</div>;
+
+  /* ───────────────────────────────────────────────
+      UI STARTS
+  ─────────────────────────────────────────────── */
   return (
     <div className="p-4 space-y-6" ref={reportRef}>
-
       {/* FILTER PANEL */}
-      <div className="border p-4 rounded-xl bg-white">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="border p-4 rounded-xl bg-white grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Select
+          label="Year"
+          value={year}
+          setter={setYear}
+          options={yearOptions.map((y) => [y, y])}
+        />
 
-          {/* YEAR DROPDOWN */}
-          <div>
-            <div className="text-xs mb-1">Year</div>
-            <select
-              className="border rounded px-3 py-2 w-full"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            >
-              <option value="">All</option>
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
+        <Select
+          label="From Month"
+          value={fromMonth}
+          setter={setFromMonth}
+          options={months}
+        />
 
-          {/* FROM MONTH */}
-          <div>
-            <div className="text-xs mb-1">From Month</div>
-            <select
-              className="border rounded px-3 py-2 w-full"
-              value={fromMonth}
-              onChange={(e) => setFromMonth(e.target.value)}
-            >
-              <option value="">All</option>
-              {months.map(([num, label]) => (
-                <option key={num} value={num}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+        <Select
+          label="To Month"
+          value={toMonth}
+          setter={setToMonth}
+          options={months}
+        />
 
-          {/* TO MONTH */}
-          <div>
-            <div className="text-xs mb-1">To Month</div>
-            <select
-              className="border rounded px-3 py-2 w-full"
-              value={toMonth}
-              onChange={(e) => setToMonth(e.target.value)}
-            >
-              <option value="">All</option>
-              {months.map(([num, label]) => (
-                <option key={num} value={num}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
+        <InputDate
+          label="From Date (dd/mm/yyyy)"
+          value={fromDate}
+          setter={setFromDate}
+        />
 
-          {/* FROM DATE */}
-          <div>
-            <div className="text-xs mb-1">From Date</div>
-            <input
-              type="date"
-              className="border rounded px-3 py-2 w-full"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
+        <InputDate
+          label="To Date (dd/mm/yyyy)"
+          value={toDate}
+          setter={setToDate}
+        />
 
-          {/* TO DATE */}
-          <div>
-            <div className="text-xs mb-1">To Date</div>
-            <input
-              type="date"
-              className="border rounded px-3 py-2 w-full"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
+        {/* Clear filters button, full row */}
+        <div className="md:col-span-5 flex justify-end">
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-xs px-3 py-2 border rounded hover:bg-gray-50"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          ["Total Orders", kpi.totalOrders],
-          ["Units On Order", kpi.totalUnitsOnOrder],
-          ["Units Invoiced", kpi.totalUnitsInvoiced],
-          ["Back Orders", kpi.totalBackOrder],
-          ["Total Sales", "$" + kpi.totalSales.toLocaleString()],
-          ["Net Sales", "$" + kpi.netSales.toLocaleString()],
-          ["Units Sold", kpi.unitsSold],
-          ["Units Returned", kpi.unitsReturned],
-          ["Inventory Total", kpi.inventoryTotal],
-          ["Available Stock", kpi.inventoryAvailable],
-        ].map(([label, val]) => (
-          <div
-            key={label}
-            className="border p-4 rounded-xl bg-white text-center shadow-sm"
-          >
-            <div className="text-xs text-gray-500">{label}</div>
-            <div className="text-xl font-bold">{val}</div>
-          </div>
-        ))}
-      </div>
+      <KPIGrid kpi={kpi} />
 
       {/* CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <div className="border p-4 rounded-xl bg-white">
-          <div className="text-sm mb-2 font-semibold">Monthly Orders</div>
-          <Chart
-            options={ordersChart.options}
-            series={ordersChart.series}
-            type="line"
-            height={300}
-          />
-        </div>
-
-        <div className="border p-4 rounded-xl bg-white">
-          <div className="text-sm mb-2 font-semibold">Net Sales</div>
-          <Chart
-            options={netSalesChart.options}
-            series={netSalesChart.series}
-            type="bar"
-            height={300}
-          />
-        </div>
-
-        <div className="border p-4 rounded-xl bg-white">
-          <div className="text-sm mb-2 font-semibold">Sales by Source</div>
-          <Chart
-            options={salesBySourceChart.options}
-            series={salesBySourceChart.series}
-            type="pie"
-            height={300}
-          />
-        </div>
-
-        <div className="border p-4 rounded-xl bg-white">
-          <div className="text-sm mb-2 font-semibold">Inventory Status</div>
-          <Chart
-            options={inventoryChart.options}
-            series={inventoryChart.series}
-            type="bar"
-            height={300}
-          />
-        </div>
+        <ChartBox title="Monthly Orders" chart={ordersChart} type="line" />
+        <ChartBox title="Net Sales" chart={netSalesChart} type="bar" />
+        <ChartBox
+          title="Units On Order vs Invoiced vs Back Orders"
+          chart={unitsOrdersChart}
+          type="bar"
+        />
+        <ChartBox
+          title="Units Sold vs Units Returned"
+          chart={unitsSalesChart}
+          type="bar"
+        />
+        <ChartBox title="Sales by Source" chart={salesBySourceChart} type="pie" />
+        <ChartBox title="Inventory Status" chart={inventoryChart} type="bar" />
       </div>
 
-      {/* PDF EXPORT */}
       <div className="text-right">
         <button
-          className="bg-black text-white px-5 py-3 rounded shadow"
           onClick={downloadPDF}
+          className="bg-black text-white px-5 py-3 rounded"
         >
           Download PDF
         </button>
       </div>
     </div>
   );
+}
+
+/* ───────────────────────────────────────────────
+    UI COMPONENTS
+────────────────────────────────────────────── */
+function Select({ label, value, setter, options }) {
+  return (
+    <div>
+      <div className="text-xs mb-1">{label}</div>
+      <select
+        className="border rounded px-3 py-2 w-full"
+        value={value}
+        onChange={(e) => setter(e.target.value)}
+      >
+        <option value="">All</option>
+        {options.map(([v, t]) => (
+          <option key={v} value={v}>
+            {t}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function InputDate({ label, value, setter }) {
+  return (
+    <div>
+      <div className="text-xs mb-1">{label}</div>
+      <input
+        type="date"
+        className="border rounded px-3 py-2 w-full"
+        value={value}
+        onChange={(e) => setter(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function KPIGrid({ kpi }) {
+  const items = [
+    ["Total Orders", kpi.totalOrders],
+    ["Units On Order", kpi.unitsOnOrder],
+    ["Units Invoiced", kpi.unitsInvoiced],
+    ["Back Orders", kpi.backOrders],
+    ["Total Sales", "$" + kpi.totalSales.toLocaleString()],
+    ["Net Sales", "$" + kpi.netSales.toLocaleString()],
+    ["Units Sold", kpi.unitsSold],
+    ["Units Returned", kpi.unitsReturned],
+    ["Inventory Total", kpi.inventoryTotal],
+    ["Available Stock", kpi.availableStock],
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {items.map(([label, value]) => (
+        <div
+          key={label}
+          className="border p-4 rounded-xl bg-white text-center shadow-sm"
+        >
+          <div className="text-xs text-gray-500">{label}</div>
+          <div className="text-xl font-bold">{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartBox({ title, chart, type }) {
+  return (
+    <div className="border p-4 rounded-xl bg-white">
+      <div className="text-sm mb-2 font-semibold">{title}</div>
+      <Chart options={chart.options} series={chart.series} type={type} height={300} />
+    </div>
+  );
+}
+
+/* ───────────────────────────────────────────────
+    UTILS
+────────────────────────────────────────────── */
+function getYear(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? null : d.getFullYear();
+}
+
+function getMonth(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? null : d.getMonth() + 1;
+}
+
+function normalizeDate(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+function pad(n) {
+  return String(n).padStart(2, "0");
 }

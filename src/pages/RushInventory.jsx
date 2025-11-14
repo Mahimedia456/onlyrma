@@ -82,6 +82,8 @@ function RushInventoryList({ refreshKey }) {
       const { data, error } = await supabase
         .from(TABLE)
         .select("*")
+        // 🔑 use created_at for list order (latest imports / edits first)
+        .order("created_at", { ascending: false })
         .order("stock_number", { ascending: true });
 
       if (error) throw error;
@@ -99,11 +101,11 @@ function RushInventoryList({ refreshKey }) {
     setPage(1);
   }, [search, fromMonth, toMonth, fromDate, toDate, yearFilter, pageSize]);
 
-  // build year dropdown from entry_date
+  // build year dropdown from created_at
   const yearOptions = useMemo(() => {
     const ys = new Set();
     for (const r of rows) {
-      const y = getYear(r.entry_date);
+      const y = getYear(r.created_at);
       if (y) ys.add(y);
     }
     return Array.from(ys).sort((a, b) => a - b);
@@ -122,20 +124,20 @@ function RushInventoryList({ refreshKey }) {
       );
     }
 
-    // year filter (entry_date)
+    // year filter (created_at)
     if (yearFilter) {
       const yNum = Number(yearFilter);
       list = list.filter((r) => {
-        const y = getYear(r.entry_date);
+        const y = getYear(r.created_at);
         if (!y) return false;
         return y === yNum;
       });
     }
 
-    // month range filter using entry_date
+    // month range filter using created_at
     if (fromMonth || toMonth) {
       list = list.filter((r) => {
-        const key = getMonthKey(r.entry_date);
+        const key = getMonthKey(r.created_at);
         if (!key) return true; // if no date, don't exclude
         if (fromMonth && key < fromMonth) return false;
         if (toMonth && key > toMonth) return false;
@@ -143,10 +145,10 @@ function RushInventoryList({ refreshKey }) {
       });
     }
 
-    // date range filter using entry_date
+    // date range filter using created_at
     if (fromDate || toDate) {
       list = list.filter((r) => {
-        const s = normalizeDate(r.entry_date);
+        const s = normalizeDate(r.created_at);
         if (!s) return true;
         if (fromDate && s < fromDate) return false;
         if (toDate && s > toDate) return false;
@@ -255,7 +257,8 @@ function RushInventoryList({ refreshKey }) {
         list_price: Number(
           String(r[h("List Price")] || "0").replace(/[^\d.-]/g, "")
         ),
-        entry_date: normalizeDate(r[h("Entry Date")] || todayIso), // 🔑
+        // 🔑 keep entry_date (optional column), reporting uses created_at
+        entry_date: normalizeDate(r[h("Entry Date")] || todayIso),
       }));
 
       setImportMsg(`Importing ${rowsToInsert.length} row(s) into Supabase…`);
@@ -308,9 +311,9 @@ function RushInventoryList({ refreshKey }) {
           />
         </div>
 
-        {/* Year selection (entry_date) */}
+        {/* Year selection (created_at) */}
         <div>
-          <div className="text-xs font-medium mb-1">Year (Entry Date)</div>
+          <div className="text-xs font-medium mb-1">Year (Created)</div>
           <select
             className="border rounded px-3 py-2"
             value={yearFilter}
@@ -325,9 +328,9 @@ function RushInventoryList({ refreshKey }) {
           </select>
         </div>
 
-        {/* Month range (entry_date) */}
+        {/* Month range (created_at) */}
         <div>
-          <div className="text-xs font-medium mb-1">From Month (Entry)</div>
+          <div className="text-xs font-medium mb-1">From Month (Created)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
@@ -337,7 +340,7 @@ function RushInventoryList({ refreshKey }) {
         </div>
 
         <div>
-          <div className="text-xs font-medium mb-1">To Month (Entry)</div>
+          <div className="text-xs font-medium mb-1">To Month (Created)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
@@ -346,9 +349,9 @@ function RushInventoryList({ refreshKey }) {
           />
         </div>
 
-        {/* Date range (entry_date) */}
+        {/* Date range (created_at) */}
         <div>
-          <div className="text-xs font-medium mb-1">From Date (Entry)</div>
+          <div className="text-xs font-medium mb-1">From Date (Created)</div>
           <input
             type="date"
             className="border rounded px-3 py-2"
@@ -358,7 +361,7 @@ function RushInventoryList({ refreshKey }) {
         </div>
 
         <div>
-          <div className="text-xs font-medium mb-1">To Date (Entry)</div>
+          <div className="text-xs font-medium mb-1">To Date (Created)</div>
           <input
             type="date"
             className="border rounded px-3 py-2"
@@ -540,7 +543,7 @@ function RushInventoryForm({ onCreated }) {
       committed: "",
       back_ordered: "",
       list_price: "",
-      entry_date: "", // 🔑
+      entry_date: "", // 🔑 kept for history; reporting uses created_at
     };
   }
 

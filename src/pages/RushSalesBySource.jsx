@@ -1,4 +1,5 @@
 // src/pages/RushSalesBySource.jsx
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -54,13 +55,11 @@ function RushSalesBySourceList({ refreshKey }) {
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
 
+  const [yearFilter, setYearFilter] = useState("");
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
-
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
-  const [yearFilter, setYearFilter] = useState("");
 
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
@@ -71,46 +70,39 @@ function RushSalesBySourceList({ refreshKey }) {
 
   useEffect(() => {
     fetchRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
   async function fetchRows() {
     setLoading(true);
-    setErr("");
     try {
       const { data, error } = await supabase
         .from(TABLE)
         .select("*")
-        .order("entry_date", { ascending: false }) // 🔑 filter on entry_date
-        .order("id", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setRows(data || []);
     } catch (e) {
-      console.error(e);
-      setErr(e.message || "Failed to load sales by source");
-    } finally {
-      setLoading(false);
+      setErr(e.message);
     }
+    setLoading(false);
   }
 
-  // reset page when filters / page size change
   useEffect(() => {
     setPage(1);
   }, [search, fromMonth, toMonth, fromDate, toDate, yearFilter, pageSize]);
 
-  // build year dropdown from entry_date
   const yearOptions = useMemo(() => {
     const ys = new Set();
-    for (const r of rows) {
-      const y = getYear(r.entry_date);
+    rows.forEach((r) => {
+      const y = getYear(r.created_at);
       if (y) ys.add(y);
-    }
+    });
     return Array.from(ys).sort((a, b) => a - b);
   }, [rows]);
 
   const filtered = useMemo(() => {
-    let list = rows;
+    let list = [...rows];
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -122,113 +114,78 @@ function RushSalesBySourceList({ refreshKey }) {
           r.product_description,
         ]
           .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(q))
+          .some((v) => v.toLowerCase().includes(q))
       );
     }
 
-    // year filter (entry_date)
-    if (yearFilter) {
-      const yNum = Number(yearFilter);
-      list = list.filter((r) => {
-        const y = getYear(r.entry_date);
-        if (!y) return false;
-        return y === yNum;
-      });
-    }
+    list = list.filter((r) => {
+      const d = normalize(r.created_at);
+      const y = getYear(r.created_at);
+      const m = getMonth(r.created_at);
 
-    // month range (entry_date)
-    if (fromMonth || toMonth) {
-      list = list.filter((r) => {
-        const key = getMonthKey(r.entry_date);
-        if (!key) return true;
-        if (fromMonth && key < fromMonth) return false;
-        if (toMonth && key > toMonth) return false;
-        return true;
-      });
-    }
+      if (yearFilter && y !== Number(yearFilter)) return false;
+      if (fromMonth && m < Number(fromMonth)) return false;
+      if (toMonth && m > Number(toMonth)) return false;
+      if (fromDate && d < fromDate) return false;
+      if (toDate && d > toDate) return false;
 
-    // date range (entry_date)
-    if (fromDate || toDate) {
-      list = list.filter((r) => {
-        const s = normalizeDate(r.entry_date);
-        if (!s) return true;
-        if (fromDate && s < fromDate) return false;
-        if (toDate && s > toDate) return false;
-        return true;
-      });
-    }
+      return true;
+    });
 
     return list;
   }, [rows, search, yearFilter, fromMonth, toMonth, fromDate, toDate]);
 
   const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const totalPages = Math.ceil(total / pageSize);
+  const safePage = Math.max(1, Math.min(page, totalPages));
   const startIndex = (safePage - 1) * pageSize;
   const pageRows = filtered.slice(startIndex, startIndex + pageSize);
-  const showingFrom = total === 0 ? 0 : startIndex + 1;
-  const showingTo = startIndex + pageRows.length;
 
   function exportCSV() {
-    if (!filtered.length) {
-      alert("No rows to export.");
-      return;
-    }
+    if (!filtered.length) return alert("No rows to export.");
 
     const headers = [
       "Source Code",
-      "Source Code Description",
-      "Product",
-      "Description",
+      "Source Desc",
+      "Product Code",
+      "Product Description",
       "Unit Price",
-      "# Sold",
-      "Sales",
-      "# Returned",
-      "Returns",
-      "# Net Units",
+      "Units Sold",
+      "Sales Amount",
+      "Units Returned",
+      "Returns Amount",
+      "Net Units",
       "Net Sales",
       "Currency",
-      "Report Date",
+      "Created At",
     ];
-
-    const lines = filtered.map((r) =>
-      [
-        r.source_code,
-        r.source_code_description,
-        r.product_code,
-        r.product_description,
-        r.unit_price,
-        r.units_sold,
-        r.sales_amount,
-        r.units_returned,
-        r.returns_amount,
-        r.net_units,
-        r.net_sales,
-        r.currency,
-        r.report_date,
-      ].map(csvEscape)
-    );
 
     const csv =
       "\uFEFF" +
-      [headers.map(csvEscape).join(","), ...lines.map((l) => l.join(","))].join(
-        "\n"
-      );
+      [headers.join(","), ...filtered.map((r) =>
+        [
+          r.source_code,
+          r.source_code_description,
+          r.product_code,
+          r.product_description,
+          r.unit_price,
+          r.units_sold,
+          r.sales_amount,
+          r.units_returned,
+          r.returns_amount,
+          r.net_units,
+          r.net_sales,
+          r.currency,
+          normalize(r.created_at),
+        ]
+          .map(csvEscape)
+          .join(",")
+      )].join("\n");
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), {
-      href: url,
-      download: "rush_sales_by_source.csv",
-    });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    downloadFile("rush_sales_by_source.csv", csv);
   }
 
   function openImport() {
-    setImportMsg("");
     fileRef.current?.click();
   }
 
@@ -237,268 +194,150 @@ function RushSalesBySourceList({ refreshKey }) {
     e.target.value = "";
     if (!file) return;
 
+    setImporting(true);
     try {
-      setImporting(true);
-      setImportMsg("Reading CSV...");
       const text = await file.text();
-
       const { headers, records } = parseCsv(text);
-      if (!headers.length || !records.length) {
-        setImportMsg("No data found in CSV.");
-        setImporting(false);
-        return;
-      }
 
-      const h = (name) =>
-        headers.find((x) => x.toLowerCase() === name.toLowerCase());
+    const h = (name) =>
+  headers.find((x) => x.toLowerCase() === name.toLowerCase());
 
-      const todayIso = new Date().toISOString().slice(0, 10);
+const today = new Date().toISOString().slice(0, 10);
 
-      const rowsToInsert = records.map((r) => ({
-        source_code: r[h("Source Code")] || "",
-        source_code_description: r[h("Source Code Description")] || "",
-        product_code: r[h("Product")] || "",
-        product_description: r[h("Description")] || "",
-        unit_price: Number(r[h("Unit Price")] || 0),
-        units_sold: Number(r[h("# Sold")] || 0),
-        sales_amount: Number(r[h("Sales")] || 0),
-        units_returned: Number(r[h("# Returned")] || 0),
-        returns_amount: Number(r[h("Returns")] || 0),
-        net_units: Number(r[h("# Net Units")] || 0),
-        net_sales: Number(r[h("Net Sales")] || 0),
-        currency: r[h("Currency")] || "USD",
-        report_date: normalizeDate(r[h("Report Date")]),
-        entry_date: normalizeDate(r[h("Entry Date")] || todayIso), // 🔑
-      }));
-
-      setImportMsg(`Importing ${rowsToInsert.length} row(s) into Supabase…`);
+const rowsToInsert = records.map((r) => {
+  const reportDate = normalize(r[h("Report Date")]) || today;
+  return {
+    source_code: r[h("Source Code")] || "",
+    source_code_description: r[h("Source Code Description")] || "",
+    product_code: r[h("Product")] || "",
+    product_description: r[h("Description")] || "",
+    unit_price: Number(r[h("Unit Price")] || 0),
+    units_sold: Number(r[h("# Sold")] || 0),
+    sales_amount: Number(r[h("Sales")] || 0),
+    units_returned: Number(r[h("# Returned")] || 0),
+    returns_amount: Number(r[h("Returns")] || 0),
+    net_units: Number(r[h("# Net Units")] || 0),
+    net_sales: Number(r[h("Net Sales")] || 0),
+    currency: r[h("Currency")] || "USD",
+    report_date: reportDate,           // optional, if column exists
+    entry_date: reportDate,            // optional, if you have this column
+    created_at: new Date().toISOString(),
+  };
+});
 
       const { error } = await supabase.from(TABLE).insert(rowsToInsert);
       if (error) throw error;
 
-      setImportMsg(`Imported ${rowsToInsert.length} row(s) successfully.`);
-      await fetchRows();
-    } catch (err) {
-      console.error(err);
-      setImportMsg(`Import failed: ${err.message}`);
-    } finally {
-      setImporting(false);
+      fetchRows();
+    } catch (e) {
+      setImportMsg("Import failed: " + e.message);
     }
+    setImporting(false);
   }
 
   async function handleDelete(id) {
-    if (!window.confirm("Delete this sales entry?")) return;
-    try {
-      const { error } = await supabase.from(TABLE).delete().eq("id", id);
-      if (error) throw error;
-      setRows((prev) => prev.filter((r) => r.id !== id));
-    } catch (e) {
-      console.error(e);
-      alert(e.message || "Failed to delete entry");
-    }
+    if (!confirm("Delete entry?")) return;
+    await supabase.from(TABLE).delete().eq("id", id);
+    setRows((s) => s.filter((x) => x.id !== id));
   }
 
   function clearFilters() {
     setSearch("");
+    setYearFilter("");
     setFromMonth("");
     setToMonth("");
     setFromDate("");
     setToDate("");
-    setYearFilter("");
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filters + actions */}
+    <div className="space-y-3">
+      {/* FILTERS */}
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <div className="text-xs font-medium mb-1">Search</div>
-          <input
-            className="border rounded px-3 py-2 w-64"
-            placeholder="Source code, product, description…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
 
-        {/* Year selection (entry_date) */}
-        <div>
-          <div className="text-xs font-medium mb-1">Year (Entry Date)</div>
-          <select
-            className="border rounded px-3 py-2"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-          >
-            <option value="">All Years</option>
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Input label="Search" value={search} setter={setSearch} w="w-64" />
 
-        {/* Month range (entry_date) */}
-        <div>
-          <div className="text-xs font-medium mb-1">From Month (Entry)</div>
-          <input
-            type="month"
-            className="border rounded px-3 py-2"
-            value={fromMonth}
-            onChange={(e) => setFromMonth(e.target.value)}
-          />
-        </div>
+        <Select label="Year" value={yearFilter} setter={setYearFilter}
+          options={yearOptions.map((y) => [y, y])}
+        />
 
-        <div>
-          <div className="text-xs font-medium mb-1">To Month (Entry)</div>
-          <input
-            type="month"
-            className="border rounded px-3 py-2"
-            value={toMonth}
-            onChange={(e) => setToMonth(e.target.value)}
-          />
-        </div>
+        <Select label="From Month" value={fromMonth} setter={setFromMonth}
+          options={months}
+        />
 
-        {/* Date range (entry_date) */}
-        <div>
-          <div className="text-xs font-medium mb-1">From Date (Entry)</div>
-          <input
-            type="date"
-            className="border rounded px-3 py-2"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-          />
-        </div>
+        <Select label="To Month" value={toMonth} setter={setToMonth}
+          options={months}
+        />
 
-        <div>
-          <div className="text-xs font-medium mb-1">To Date (Entry)</div>
-          <input
-            type="date"
-            className="border rounded px-3 py-2"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-          />
-        </div>
+        <DateInput label="From Date" value={fromDate} setter={setFromDate} />
+        <DateInput label="To Date" value={toDate} setter={setToDate} />
 
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 text-xs">
-            <span>Rows per page:</span>
-            <select
-              className="border rounded px-2 py-1"
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value) || 25)}
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-
-          <button
-            onClick={clearFilters}
-            className="rounded border px-3 py-2 text-xs hover:bg-gray-50"
-          >
-            Clear filters
+        <div className="ml-auto flex gap-2">
+          <button className="border px-3 py-2 text-xs" onClick={clearFilters}>
+            Clear
           </button>
-
-          <button
-            onClick={fetchRows}
-            className="rounded border px-4 py-2 hover:bg-gray-50"
-            disabled={loading}
-          >
+          <button className="border px-4 py-2" onClick={fetchRows}>
             Refresh
           </button>
-          <button
-            onClick={exportCSV}
-            className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800"
-            disabled={loading || importing}
-          >
+          <button className="bg-black text-white px-4 py-2" onClick={exportCSV}>
             Export CSV
           </button>
-          <button
-            onClick={openImport}
-            className="rounded border px-4 py-2 hover:bg-gray-50"
-            disabled={loading || importing}
-          >
-            {importing ? "Importing…" : "Import CSV"}
+          <button className="border px-4 py-2" onClick={openImport}>
+            Import CSV
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={handleImportChange}
-          />
+          <input type="file" ref={fileRef} onChange={handleImportChange} className="hidden" />
         </div>
       </div>
 
       {importMsg && <div className="text-xs text-gray-600">{importMsg}</div>}
-      {err && (
-        <div className="text-sm text-red-600 border border-red-200 bg-red-50 px-3 py-2 rounded">
-          {err}
-        </div>
-      )}
 
-      {/* Table */}
+      {/* TABLE */}
       <div className="border rounded overflow-auto">
-        <table className="w-[1400px] max-w-none text-sm">
+        <table className="min-w-[1400px] text-sm">
           <thead className="bg-gray-50">
             <tr>
               <Th>#</Th>
               <Th>Source Code</Th>
-              <Th>Source Desc</Th>
-              <Th>Product</Th>
               <Th>Description</Th>
+              <Th>Product</Th>
+              <Th>Product Desc</Th>
               <Th>Unit Price</Th>
-              <Th># Sold</Th>
+              <Th>Sold</Th>
               <Th>Sales</Th>
-              <Th># Returned</Th>
+              <Th>Returned</Th>
               <Th>Returns</Th>
-              <Th># Net Units</Th>
+              <Th>Net Units</Th>
               <Th>Net Sales</Th>
               <Th>Currency</Th>
-              <Th>Report Date</Th>
+              <Th>Created At</Th>
               <Th>Actions</Th>
             </tr>
           </thead>
+
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={15} className="p-6 text-center">
-                  Loading…
-                </td>
-              </tr>
+              <tr><td colSpan="15" className="p-6 text-center">Loading…</td></tr>
             ) : pageRows.length === 0 ? (
-              <tr>
-                <td colSpan={15} className="p-6 text-center">
-                  No sales entries
-                </td>
-              </tr>
+              <tr><td colSpan="15" className="p-6 text-center">No entries</td></tr>
             ) : (
               pageRows.map((r, i) => (
-                <tr
-                  key={r.id || `${r.source_code}-${r.product_code}-${i}`}
-                  className="border-t hover:bg-gray-50"
-                >
+                <tr key={r.id} className="border-t">
                   <Td>{startIndex + i + 1}</Td>
-                  <Td>{r.source_code || "-"}</Td>
-                  <Td>{r.source_code_description || "-"}</Td>
-                  <Td>{r.product_code || "-"}</Td>
-                  <Td>{r.product_description || "-"}</Td>
-                  <Td>{r.unit_price ?? 0}</Td>
-                  <Td>{r.units_sold ?? 0}</Td>
-                  <Td>{r.sales_amount ?? 0}</Td>
-                  <Td>{r.units_returned ?? 0}</Td>
-                  <Td>{r.returns_amount ?? 0}</Td>
-                  <Td>{r.net_units ?? 0}</Td>
-                  <Td>{r.net_sales ?? 0}</Td>
-                  <Td>{r.currency || "-"}</Td>
-                  <Td>{fmtDate(r.report_date)}</Td>
+                  <Td>{r.source_code}</Td>
+                  <Td>{r.source_code_description}</Td>
+                  <Td>{r.product_code}</Td>
+                  <Td>{r.product_description}</Td>
+                  <Td>{r.unit_price}</Td>
+                  <Td>{r.units_sold}</Td>
+                  <Td>{r.sales_amount}</Td>
+                  <Td>{r.units_returned}</Td>
+                  <Td>{r.returns_amount}</Td>
+                  <Td>{r.net_units}</Td>
+                  <Td>{r.net_sales}</Td>
+                  <Td>{r.currency}</Td>
+                  <Td>{fmt(r.created_at)}</Td>
                   <Td>
-                    <button
-                      className="text-red-600 text-xs hover:underline"
-                      onClick={() => handleDelete(r.id)}
-                    >
+                    <button className="text-red-600" onClick={() => handleDelete(r.id)}>
                       Delete
                     </button>
                   </Td>
@@ -509,27 +348,19 @@ function RushSalesBySourceList({ refreshKey }) {
         </table>
       </div>
 
-      {/* Pagination footer */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
-        <div>
-          Showing {showingFrom}–{showingTo} of {total} row(s)
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="px-2 py-1 border rounded disabled:opacity-50"
-            disabled={safePage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
+      {/* PAGINATION */}
+      <div className="flex justify-between text-xs px-1">
+        <span>
+          Showing {startIndex + 1}–{startIndex + pageRows.length} of {total}
+        </span>
+        <div className="flex gap-2">
+          <button className="border px-3 py-1" disabled={safePage <= 1}
+            onClick={() => setPage((p) => p - 1)}>
             Prev
           </button>
-          <span>
-            Page {safePage} of {totalPages}
-          </span>
-          <button
-            className="px-2 py-1 border rounded disabled:opacity-50"
-            disabled={safePage >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
+          <span>Page {safePage} / {totalPages || 1}</span>
+          <button className="border px-3 py-1" disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => p + 1)}>
             Next
           </button>
         </div>
@@ -541,39 +372,33 @@ function RushSalesBySourceList({ refreshKey }) {
 /* ========================= NEW ENTRY TAB ========================= */
 
 function RushSalesBySourceForm({ onCreated }) {
-  const [form, setForm] = useState(blankForm());
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
-  function blankForm() {
-    return {
-      source_code: "",
-      source_code_description: "",
-      product_code: "",
-      product_description: "",
-      unit_price: "",
-      units_sold: "",
-      sales_amount: "",
-      units_returned: "",
-      returns_amount: "",
-      net_units: "",
-      net_sales: "",
-      currency: "USD",
-      report_date: "",
-      entry_date: "", // 🔑
-    };
-  }
+  const [form, setForm] = useState({
+    source_code: "",
+    source_code_description: "",
+    product_code: "",
+    product_description: "",
+    unit_price: "",
+    units_sold: "",
+    sales_amount: "",
+    units_returned: "",
+    returns_amount: "",
+    net_units: "",
+    net_sales: "",
+    currency: "USD",
+  });
 
-  const updateForm = (key) => (e) =>
+  const update = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  async function handleCreate(e) {
+  async function submit(e) {
     e.preventDefault();
     setSaving(true);
     setErr("");
-    try {
-      const todayIso = new Date().toISOString().slice(0, 10);
 
+    try {
       const payload = {
         ...form,
         unit_price: Number(form.unit_price || 0),
@@ -583,98 +408,65 @@ function RushSalesBySourceForm({ onCreated }) {
         returns_amount: Number(form.returns_amount || 0),
         net_units: Number(form.net_units || 0),
         net_sales: Number(form.net_sales || 0),
-        report_date: normalizeDate(form.report_date),
-        entry_date: normalizeDate(form.entry_date || todayIso),
+        created_at: new Date().toISOString(),
       };
 
       const { error } = await supabase.from(TABLE).insert(payload);
       if (error) throw error;
 
-      setForm(blankForm());
-      onCreated?.();
+      onCreated();
+      setForm({
+        source_code: "",
+        source_code_description: "",
+        product_code: "",
+        product_description: "",
+        unit_price: "",
+        units_sold: "",
+        sales_amount: "",
+        units_returned: "",
+        returns_amount: "",
+        net_units: "",
+        net_sales: "",
+        currency: "USD",
+      });
+
     } catch (e) {
-      console.error(e);
-      setErr(e.message || "Failed to create sales row");
-    } finally {
-      setSaving(false);
+      setErr(e.message);
     }
+
+    setSaving(false);
   }
 
   return (
     <form
-      onSubmit={handleCreate}
-      className="rounded-xl border p-4 grid grid-cols-1 md:grid-cols-3 gap-3"
+      onSubmit={submit}
+      className="border p-4 grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl"
     >
-      <div className="md:col-span-3 text-sm font-semibold">
-        New Sales Entry
-      </div>
+      <h2 className="md:col-span-3 font-semibold">New Sales Entry</h2>
 
-      {err && (
-        <div className="md:col-span-3 text-sm text-red-600 border border-red-200 bg-red-50 px-3 py-2 rounded">
-          {err}
-        </div>
-      )}
+      {err && <div className="md:col-span-3 text-red-600">{err}</div>}
 
-      {field("Source Code", "source_code", form.source_code, updateForm)}
-      {field(
-        "Source Code Description",
-        "source_code_description",
-        form.source_code_description,
-        updateForm
-      )}
-      {field("Product Code", "product_code", form.product_code, updateForm)}
+      {Field("Source Code", "source_code", form.source_code, update)}
+      {Field("Source Description", "source_code_description", form.source_code_description, update)}
+      {Field("Product Code", "product_code", form.product_code, update)}
 
-      {field(
-        "Product Description",
-        "product_description",
-        form.product_description,
-        updateForm
-      )}
-      {field("Unit Price", "unit_price", form.unit_price, updateForm, "number")}
-      {field("# Sold", "units_sold", form.units_sold, updateForm, "number")}
+      {Field("Product Description", "product_description", form.product_description, update)}
+      {Field("Unit Price", "unit_price", form.unit_price, update, "number")}
+      {Field("Units Sold", "units_sold", form.units_sold, update, "number")}
 
-      {field(
-        "Sales Amount",
-        "sales_amount",
-        form.sales_amount,
-        updateForm,
-        "number"
-      )}
-      {field(
-        "# Returned",
-        "units_returned",
-        form.units_returned,
-        updateForm,
-        "number"
-      )}
-      {field(
-        "Returns Amount",
-        "returns_amount",
-        form.returns_amount,
-        updateForm,
-        "number"
-      )}
+      {Field("Sales Amount", "sales_amount", form.sales_amount, update, "number")}
+      {Field("Units Returned", "units_returned", form.units_returned, update, "number")}
+      {Field("Returns Amount", "returns_amount", form.returns_amount, update, "number")}
 
-      {field("Net Units", "net_units", form.net_units, updateForm, "number")}
-      {field("Net Sales", "net_sales", form.net_sales, updateForm, "number")}
-      {field("Currency", "currency", form.currency, updateForm)}
+      {Field("Net Units", "net_units", form.net_units, update, "number")}
+      {Field("Net Sales", "net_sales", form.net_sales, update, "number")}
+      {Field("Currency", "currency", form.currency, update)}
 
-      {field("Report Date", "report_date", form.report_date, updateForm, "date")}
-      {field("Entry Date", "entry_date", form.entry_date, updateForm, "date")}
-
-      <div className="md:col-span-3 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setForm(blankForm())}
-          className="px-4 py-2 rounded border"
-          disabled={saving}
-        >
-          Clear
-        </button>
+      <div className="md:col-span-3 flex justify-end">
         <button
           type="submit"
-          className="px-4 py-2 rounded bg-black text-white hover:bg-gray-800"
           disabled={saving}
+          className="bg-black text-white px-4 py-2 rounded"
         >
           {saving ? "Saving…" : "Add Entry"}
         </button>
@@ -683,132 +475,172 @@ function RushSalesBySourceForm({ onCreated }) {
   );
 }
 
-/* ========================= SHARED HELPERS ========================= */
+/* ========================= UI HELPERS ========================= */
+const Th = ({ children }) => (
+  <th className="px-3 py-2 text-xs font-semibold whitespace-nowrap">{children}</th>
+);
+const Td = ({ children }) => (
+  <td className="px-3 py-2 whitespace-nowrap">{children}</td>
+);
 
-function field(label, key, value, update, type = "text") {
+function Field(label, key, value, update, type = "text") {
   return (
-    <label className="block text-sm">
-      <span className="block text-xs text-gray-600 mb-1">{label}</span>
+    <label className="text-sm">
+      <div className="text-xs text-gray-600 mb-1">{label}</div>
       <input
         type={type}
-        className="w-full border rounded px-3 py-2"
-        value={type === "date" ? (value || "") : value}
+        className="border rounded px-3 py-2 w-full"
+        value={value}
         onChange={update(key)}
       />
     </label>
   );
 }
 
-const Th = ({ children }) => (
-  <th className="text-left px-3 py-2 font-medium text-gray-600 whitespace-nowrap">
-    {children}
-  </th>
-);
-const Td = ({ children }) => (
-  <td className="px-3 py-2 whitespace-nowrap align-top">{children}</td>
-);
+function Input({ label, value, setter, w = "" }) {
+  return (
+    <label className={`text-sm ${w}`}>
+      <div className="text-xs mb-1">{label}</div>
+      <input
+        className="border rounded px-3 py-2 w-full"
+        value={value}
+        onChange={(e) => setter(e.target.value)}
+      />
+    </label>
+  );
+}
 
-function csvEscape(val) {
-  if (val === undefined || val === null) return "";
-  const s = String(val);
+function DateInput({ label, value, setter }) {
+  return (
+    <label className="text-sm">
+      <div className="text-xs mb-1">{label}</div>
+      <input
+        type="date"
+        className="border rounded px-3 py-2"
+        value={value}
+        onChange={(e) => setter(e.target.value)}
+      />
+    </label>
+  );
+}
+
+function Select({ label, value, setter, options }) {
+  return (
+    <label className="text-sm">
+      <div className="text-xs mb-1">{label}</div>
+      <select
+        className="border rounded px-3 py-2"
+        value={value}
+        onChange={(e) => setter(e.target.value)}
+      >
+        <option value="">All</option>
+        {options.map(([val, text]) => (
+          <option key={val} value={val}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function csvEscape(v) {
+  if (v === undefined || v === null) return "";
+  const s = String(v);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
 
-function fmtDate(v) {
-  if (!v) return "-";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return v;
-  return d.toLocaleDateString();
+function downloadFile(name, content) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
-function getMonthKey(v) {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
+/* ========================= DATE HELPERS ========================= */
 
-function getYear(v) {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.getFullYear();
-}
+const months = [
+  ["01", "January"],
+  ["02", "February"],
+  ["03", "March"],
+  ["04", "April"],
+  ["05", "May"],
+  ["06", "June"],
+  ["07", "July"],
+  ["08", "August"],
+  ["09", "September"],
+  ["10", "October"],
+  ["11", "November"],
+  ["12", "December"],
+];
 
-function normalizeDate(v) {
-  if (!v) return null;
-  const s = String(v).trim();
-  if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
+function normalize(date) {
+  if (!date) return null;
+  const d = new Date(date);
   return d.toISOString().slice(0, 10);
 }
 
-/* Lightweight CSV parser */
+function getYear(date) {
+  const d = new Date(date);
+  return d.getFullYear();
+}
+
+function getMonth(date) {
+  const d = new Date(date);
+  return d.getMonth() + 1;
+}
+
+function fmt(date) {
+  const d = new Date(date);
+  return d.toLocaleDateString();
+}
+
+/* ========================= CSV PARSER ========================= */
 function parseCsv(text) {
   const rows = [];
-  let i = 0,
-    cur = "",
-    inQ = false,
-    row = [];
+  let cur = "";
+  let row = [];
+  let inQ = false;
 
-  const pushCell = () => {
-    row.push(cur);
-    cur = "";
-  };
-  const pushRow = () => {
-    rows.push(row);
-    row = [];
-  };
-
-  while (i < text.length) {
+  for (let i = 0; i < text.length; i++) {
     const ch = text[i];
+
     if (inQ) {
       if (ch === '"') {
         if (text[i + 1] === '"') {
           cur += '"';
-          i += 2;
-          continue;
-        }
-        inQ = false;
-        i++;
-        continue;
+          i++;
+        } else inQ = false;
+      } else {
+        cur += ch;
       }
-      cur += ch;
-      i++;
-      continue;
-    }
-    if (ch === '"') {
+    } else if (ch === '"') {
       inQ = true;
-      i++;
-      continue;
+    } else if (ch === ",") {
+      row.push(cur);
+      cur = "";
+    } else if (ch === "\n") {
+      row.push(cur);
+      rows.push(row);
+      row = [];
+      cur = "";
+    } else {
+      cur += ch;
     }
-    if (ch === ",") {
-      pushCell();
-      i++;
-      continue;
-    }
-    if (ch === "\r") {
-      i++;
-      continue;
-    }
-    if (ch === "\n") {
-      pushCell();
-      pushRow();
-      i++;
-      continue;
-    }
-    cur += ch;
-    i++;
   }
-  pushCell();
-  if (row.length) pushRow();
 
-  const headers = (rows.shift() || []).map((h) => String(h || "").trim());
-  const records = rows
-    .filter((r) => r.some((c) => String(c).trim() !== ""))
-    .map((r) => Object.fromEntries(headers.map((h, idx) => [h, r[idx] ?? ""])));
+  if (cur) row.push(cur);
+  if (row.length) rows.push(row);
+
+  const headers = rows.shift().map((h) => h.trim());
+  const records = rows.map((r) =>
+    Object.fromEntries(headers.map((h, i) => [h, r[i] || ""]))
+  );
+
   return { headers, records };
 }

@@ -11,7 +11,6 @@ export default function RushProcessedOrders() {
 
   return (
     <div className="p-4 space-y-4">
-
       {/* Tabs */}
       <div className="inline-flex rounded-xl border overflow-hidden">
         <TabButton active={tab === "list"} onClick={() => setTab("list")}>
@@ -27,7 +26,7 @@ export default function RushProcessedOrders() {
       ) : (
         <RushProcessedOrdersForm
           onCreated={() => {
-            setRefreshKey(x => x + 1);
+            setRefreshKey((x) => x + 1);
             setTab("list");
           }}
         />
@@ -59,7 +58,7 @@ function RushProcessedOrdersList({ refreshKey }) {
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
 
-  // ENTRY DATE filters
+  // FILTERS based on created_at
   const [yearFilter, setYearFilter] = useState("");
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
@@ -75,6 +74,7 @@ function RushProcessedOrdersList({ refreshKey }) {
 
   useEffect(() => {
     fetchRows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
   async function fetchRows() {
@@ -85,7 +85,7 @@ function RushProcessedOrdersList({ refreshKey }) {
       const { data, error } = await supabase
         .from(TABLE)
         .select("*")
-        .order("entry_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .order("id", { ascending: false });
 
       if (error) throw error;
@@ -104,21 +104,22 @@ function RushProcessedOrdersList({ refreshKey }) {
     try {
       const { error } = await supabase.from(TABLE).delete().eq("id", id);
       if (error) throw error;
-      setRows(prev => prev.filter(row => row.id !== id));
+      setRows((prev) => prev.filter((row) => row.id !== id));
     } catch (e) {
       alert(e.message);
     }
   }
 
+  // Reset pagination on filter / size change
   useEffect(() => {
     setPage(1);
   }, [search, yearFilter, fromMonth, toMonth, fromDate, toDate, pageSize]);
 
-  // Build year dropdown from entry_date
+  // Build year dropdown from created_at
   const yearOptions = useMemo(() => {
     const ys = new Set();
-    rows.forEach(r => {
-      const y = getYear(r.entry_date);
+    rows.forEach((r) => {
+      const y = getYear(r.created_at);
       if (y) ys.add(y);
     });
     return Array.from(ys).sort((a, b) => a - b);
@@ -131,7 +132,7 @@ function RushProcessedOrdersList({ refreshKey }) {
     // search
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(r =>
+      list = list.filter((r) =>
         [
           r.order_no,
           r.invoice_part,
@@ -144,19 +145,21 @@ function RushProcessedOrdersList({ refreshKey }) {
           r.tracking_number,
         ]
           .filter(Boolean)
-          .some(v => String(v).toLowerCase().includes(q))
+          .some((v) => String(v).toLowerCase().includes(q))
       );
     }
 
-    // year filter
+    // year filter (created_at)
     if (yearFilter) {
-      list = list.filter(r => getYear(r.entry_date) === Number(yearFilter));
+      list = list.filter(
+        (r) => getYear(r.created_at) === Number(yearFilter)
+      );
     }
 
-    // month range
+    // month range (created_at)
     if (fromMonth || toMonth) {
-      list = list.filter(r => {
-        const key = getMonthKey(r.entry_date);
+      list = list.filter((r) => {
+        const key = getMonthKey(r.created_at);
         if (!key) return false;
         if (fromMonth && key < fromMonth) return false;
         if (toMonth && key > toMonth) return false;
@@ -164,10 +167,10 @@ function RushProcessedOrdersList({ refreshKey }) {
       });
     }
 
-    // date range
+    // date range (created_at)
     if (fromDate || toDate) {
-      list = list.filter(r => {
-        const d = normalizeDate(r.entry_date);
+      list = list.filter((r) => {
+        const d = normalizeDate(r.created_at);
         if (!d) return false;
         if (fromDate && d < fromDate) return false;
         if (toDate && d > toDate) return false;
@@ -209,7 +212,7 @@ function RushProcessedOrdersList({ refreshKey }) {
       "Serials",
     ];
 
-    const lines = filtered.map(r =>
+    const lines = filtered.map((r) =>
       [
         r.order_no,
         r.invoice_part,
@@ -231,7 +234,7 @@ function RushProcessedOrdersList({ refreshKey }) {
 
     const csv =
       "\uFEFF" +
-      [headers.join(","), ...lines.map(l => l.join(","))].join("\n");
+      [headers.join(","), ...lines.map((l) => l.join(","))].join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -259,12 +262,18 @@ function RushProcessedOrdersList({ refreshKey }) {
       const text = await file.text();
       const { headers, records } = parseCsv(text);
 
-      const h = name =>
-        headers.find(x => x.toLowerCase() === name.toLowerCase());
+      if (!headers.length || !records.length) {
+        setImportMsg("No data found in CSV.");
+        setImporting(false);
+        return;
+      }
+
+      const h = (name) =>
+        headers.find((x) => x.toLowerCase() === name.toLowerCase());
 
       const today = new Date().toISOString().slice(0, 10);
 
-      const rowsToInsert = records.map(r => ({
+      const rowsToInsert = records.map((r) => ({
         order_no: r[h("Order")] || "",
         invoice_part: r[h("Invoice Part")] || "",
         order_date: normalizeDate(r[h("Order Date")]),
@@ -280,7 +289,8 @@ function RushProcessedOrdersList({ refreshKey }) {
         carrier_service: r[h("Carrier / Service")] || "",
         tracking_number: r[h("Tracking Number")] || "",
         serials: r[h("Serials")] || "",
-        entry_date: today,
+        // keep entry_date, reporting uses created_at
+        entry_date: normalizeDate(r[h("Entry Date")] || today),
       }));
 
       setImportMsg(`Importing ${rowsToInsert.length} rows…`);
@@ -309,10 +319,8 @@ function RushProcessedOrdersList({ refreshKey }) {
 
   return (
     <div className="space-y-4">
-
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
-
         {/* Search */}
         <div>
           <div className="text-xs mb-1 font-medium">Search</div>
@@ -320,72 +328,71 @@ function RushProcessedOrdersList({ refreshKey }) {
             className="border rounded px-3 py-2 w-64"
             placeholder="Order, company, email…"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {/* YEAR */}
+        {/* YEAR (created_at) */}
         <div>
-          <div className="text-xs mb-1 font-medium">Year (Entry)</div>
+          <div className="text-xs mb-1 font-medium">Year (Created)</div>
           <select
             className="border rounded px-3 py-2"
             value={yearFilter}
-            onChange={e => setYearFilter(e.target.value)}
+            onChange={(e) => setYearFilter(e.target.value)}
           >
             <option value="">All</option>
-            {yearOptions.map(y => (
+            {yearOptions.map((y) => (
               <option key={y}>{y}</option>
             ))}
           </select>
         </div>
 
-        {/* MONTH FROM */}
+        {/* MONTH FROM (created_at) */}
         <div>
-          <div className="text-xs mb-1 font-medium">From Month (Entry)</div>
+          <div className="text-xs mb-1 font-medium">From Month (Created)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
             value={fromMonth}
-            onChange={e => setFromMonth(e.target.value)}
+            onChange={(e) => setFromMonth(e.target.value)}
           />
         </div>
 
-        {/* MONTH TO */}
+        {/* MONTH TO (created_at) */}
         <div>
-          <div className="text-xs mb-1 font-medium">To Month (Entry)</div>
+          <div className="text-xs mb-1 font-medium">To Month (Created)</div>
           <input
             type="month"
             className="border rounded px-3 py-2"
             value={toMonth}
-            onChange={e => setToMonth(e.target.value)}
+            onChange={(e) => setToMonth(e.target.value)}
           />
         </div>
 
-        {/* DATE FROM */}
+        {/* DATE FROM (created_at) */}
         <div>
-          <div className="text-xs mb-1 font-medium">From Date (Entry)</div>
+          <div className="text-xs mb-1 font-medium">From Date (Created)</div>
           <input
             type="date"
             className="border rounded px-3 py-2"
             value={fromDate}
-            onChange={e => setFromDate(e.target.value)}
+            onChange={(e) => setFromDate(e.target.value)}
           />
         </div>
 
-        {/* DATE TO */}
+        {/* DATE TO (created_at) */}
         <div>
-          <div className="text-xs mb-1 font-medium">To Date (Entry)</div>
+          <div className="text-xs mb-1 font-medium">To Date (Created)</div>
           <input
             type="date"
             className="border rounded px-3 py-2"
             value={toDate}
-            onChange={e => setToDate(e.target.value)}
+            onChange={(e) => setToDate(e.target.value)}
           />
         </div>
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-3">
-
           <button
             className="rounded border px-3 py-2 text-xs"
             onClick={clearFilters}
@@ -395,22 +402,19 @@ function RushProcessedOrdersList({ refreshKey }) {
 
           <button
             onClick={exportCSV}
-            className="rounded bg-black text-white px-4 py-2"
+            className="rounded bg-black text-white px-4 py-2 text-xs"
           >
             Export CSV
           </button>
 
-          <button
-            onClick={openImport}
-            className="rounded border px-4 py-2"
-          >
+          <button onClick={openImport} className="rounded border px-4 py-2 text-xs">
             {importing ? "Importing…" : "Import CSV"}
           </button>
           <input
             ref={fileRef}
             className="hidden"
             type="file"
-            accept=".csv"
+            accept=".csv,text/csv"
             onChange={handleImportChange}
           />
         </div>
@@ -507,7 +511,7 @@ function RushProcessedOrdersList({ refreshKey }) {
           <button
             className="px-2 py-1 border rounded"
             disabled={safePage <= 1}
-            onClick={() => setPage(p => p - 1)}
+            onClick={() => setPage((p) => p - 1)}
           >
             Prev
           </button>
@@ -519,13 +523,12 @@ function RushProcessedOrdersList({ refreshKey }) {
           <button
             className="px-2 py-1 border rounded"
             disabled={safePage >= totalPages}
-            onClick={() => setPage(p => p + 1)}
+            onClick={() => setPage((p) => p + 1)}
           >
             Next
           </button>
         </div>
       </div>
-
     </div>
   );
 }
@@ -558,7 +561,7 @@ function RushProcessedOrdersForm({ onCreated }) {
   const [err, setErr] = useState("");
 
   function update(key) {
-    return e => setForm(f => ({ ...f, [key]: e.target.value }));
+    return (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   }
 
   async function handleCreate(e) {
@@ -601,7 +604,7 @@ function RushProcessedOrdersForm({ onCreated }) {
         entry_date: "",
       });
 
-      onCreated();
+      onCreated?.();
     } catch (e) {
       console.error(e);
       setErr(e.message || "Failed to save");
@@ -637,9 +640,27 @@ function RushProcessedOrdersForm({ onCreated }) {
       {field("Company", "company", form.company, update)}
       {field("Email", "email", form.email, update, "email")}
 
-      {field("Units On Order", "units_on_order", form.units_on_order, update, "number")}
-      {field("Units Invoiced", "units_invoiced", form.units_invoiced, update, "number")}
-      {field("Units on Back Order", "units_on_back_order", form.units_on_back_order, update, "number")}
+      {field(
+        "Units On Order",
+        "units_on_order",
+        form.units_on_order,
+        update,
+        "number"
+      )}
+      {field(
+        "Units Invoiced",
+        "units_invoiced",
+        form.units_invoiced,
+        update,
+        "number"
+      )}
+      {field(
+        "Units on Back Order",
+        "units_on_back_order",
+        form.units_on_back_order,
+        update,
+        "number"
+      )}
 
       {field("Carrier / Service", "carrier_service", form.carrier_service, update)}
       {field("Tracking Number", "tracking_number", form.tracking_number, update)}
@@ -674,6 +695,7 @@ function RushProcessedOrdersForm({ onCreated }) {
               entry_date: "",
             })
           }
+          disabled={saving}
         >
           Clear
         </button>
@@ -746,22 +768,76 @@ function getMonthKey(v) {
 function normalizeDate(v) {
   if (!v) return null;
   const s = String(v).trim();
+  if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const d = new Date(s);
   return isNaN(d) ? null : d.toISOString().slice(0, 10);
 }
 
-// CSV Parser
+/* Lightweight CSV parser with quotes support */
 function parseCsv(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
-  const headers = lines.shift().split(",").map(h => h.trim());
-  const records = lines.map(line => {
-    const cols = line.split(",");
-    const obj = {};
-    headers.forEach((h, i) => {
-      obj[h] = cols[i] || "";
-    });
-    return obj;
-  });
+  const rows = [];
+  let i = 0,
+    cur = "",
+    inQ = false,
+    row = [];
+
+  const pushCell = () => {
+    row.push(cur);
+    cur = "";
+  };
+  const pushRow = () => {
+    rows.push(row);
+    row = [];
+  };
+
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cur += '"';
+          i += 2;
+          continue;
+        }
+        inQ = false;
+        i++;
+        continue;
+      }
+      cur += ch;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inQ = true;
+      i++;
+      continue;
+    }
+    if (ch === ",") {
+      pushCell();
+      i++;
+      continue;
+    }
+    if (ch === "\r") {
+      i++;
+      continue;
+    }
+    if (ch === "\n") {
+      pushCell();
+      pushRow();
+      i++;
+      continue;
+    }
+    cur += ch;
+    i++;
+  }
+  pushCell();
+  if (row.length) pushRow();
+
+  const headers = (rows.shift() || []).map((h) => String(h || "").trim());
+  const records = rows
+    .filter((r) => r.some((c) => String(c).trim() !== ""))
+    .map((r) => Object.fromEntries(headers.map((h, idx) => [h, r[idx] ?? ""])));
   return { headers, records };
 }
+  
