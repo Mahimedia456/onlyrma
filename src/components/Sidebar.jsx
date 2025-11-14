@@ -1,5 +1,3 @@
-// src/components/Sidebar.jsx
-
 import { useNavigate } from "react-router-dom";
 import { FiLogOut, FiChevronRight, FiChevronDown, FiX } from "react-icons/fi";
 import { useState } from "react";
@@ -76,19 +74,31 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
 
             {rmaOpen && (
               <div className="ml-3 pl-3 border-l border-gray-200 space-y-1 py-1">
-                <button onClick={() => go("rma:entry")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                <button
+                  onClick={() => go("rma:entry")}
+                  className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                >
                   RMA Entry (Lists)
                 </button>
 
                 {!isViewer && (
                   <>
-                    <button onClick={() => go("rma:emea")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                    <button
+                      onClick={() => go("rma:emea")}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                    >
                       RMA Stock (EMEA)
                     </button>
-                    <button onClick={() => go("rma:us")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                    <button
+                      onClick={() => go("rma:us")}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                    >
                       RMA Stock (US)
                     </button>
-                    <button onClick={() => go("rma:product")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                    <button
+                      onClick={() => go("rma:product")}
+                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                    >
                       RMA Products
                     </button>
                   </>
@@ -110,13 +120,22 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
 
               {rushOpen && (
                 <div className="ml-3 pl-3 border-l border-gray-200 space-y-1 py-1">
-                  <button onClick={() => go("rush:sales")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                  <button
+                    onClick={() => go("rush:sales")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
                     Sales by SourceCode
                   </button>
-                  <button onClick={() => go("rush:processed")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                  <button
+                    onClick={() => go("rush:processed")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
                     Processed Orders
                   </button>
-                  <button onClick={() => go("rush:inventory")} className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm">
+                  <button
+                    onClick={() => go("rush:inventory")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
                     Inventory
                   </button>
                 </div>
@@ -141,7 +160,28 @@ export default function Sidebar({ onSelect, onLogout, isOpen = false, onClose = 
                     onClick={() => go("reports:dashboard")}
                     className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
                   >
-                    Reports Dashboard
+                    Rush Reports
+                  </button>
+
+                  <button
+                    onClick={() => go("reports:rma-regions")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
+                    RMA Region Reports
+                  </button>
+
+                  <button
+                    onClick={() => go("reports:comparison")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
+                    Rush vs RMA (Global)
+                  </button>
+
+                  <button
+                    onClick={() => go("reports:product-comparison")}
+                    className="w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm"
+                  >
+                    Product Comparison
                   </button>
                 </div>
               )}

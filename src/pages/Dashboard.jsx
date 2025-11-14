@@ -1,6 +1,4 @@
-// src/pages/Dashboard.jsx
-
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FiMenu } from "react-icons/fi";
 import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +16,9 @@ import RushSalesBySource from "@/pages/RushSalesBySource";
 
 // Reports
 import RushReports from "@/pages/RushReports";
+import RmaRegionReports from "@/pages/RmaRegionReports";
+import RushRmaCompare from "@/pages/RushRmaCompare";
+import RushRmaProductCompare from "@/pages/RushRmaProductCompare";
 
 export default function Dashboard() {
   const role = useMemo(
@@ -44,8 +45,11 @@ export default function Dashboard() {
     if (key === "rush:processed") setView("rush-processed");
     if (key === "rush:inventory") setView("rush-inventory");
 
-    // REPORTS
+    // Reports
     if (key === "reports:dashboard") setView("reports-dashboard");
+    if (key === "reports:rma-regions") setView("reports-rma-regions");
+    if (key === "reports:comparison") setView("reports-comparison");
+    if (key === "reports:product-comparison") setView("reports-product-comparison");
   };
 
   return (
@@ -72,50 +76,69 @@ export default function Dashboard() {
 
         {/* RMA Pages */}
         {view === "rma-entry" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RmaEntry />
-          </div>
+          </Page>
         )}
         {!isViewer && view === "rma-emea" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RmaStockEmea />
-          </div>
+          </Page>
         )}
         {!isViewer && view === "rma-us" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RmaStockUs />
-          </div>
+          </Page>
         )}
         {!isViewer && view === "rma-product" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RmaProductsExplorer />
-          </div>
+          </Page>
         )}
 
         {/* Rush */}
         {!isViewer && view === "rush-sales" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RushSalesBySource />
-          </div>
+          </Page>
         )}
         {!isViewer && view === "rush-processed" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RushProcessedOrders />
-          </div>
+          </Page>
         )}
         {!isViewer && view === "rush-inventory" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RushInventory />
-          </div>
+          </Page>
         )}
 
-        {/* Reports Dashboard */}
+        {/* Reports */}
         {!isViewer && view === "reports-dashboard" && (
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <Page>
             <RushReports />
-          </div>
+          </Page>
+        )}
+        {!isViewer && view === "reports-rma-regions" && (
+          <Page>
+            <RmaRegionReports />
+          </Page>
+        )}
+        {!isViewer && view === "reports-comparison" && (
+          <Page>
+            <RushRmaCompare />
+          </Page>
+        )}
+        {!isViewer && view === "reports-product-comparison" && (
+          <Page>
+            <RushRmaProductCompare />
+          </Page>
         )}
       </main>
     </div>
   );
+}
+
+function Page({ children }) {
+  return <div className="bg-white rounded-lg shadow-md p-4">{children}</div>;
 }
