@@ -50,24 +50,32 @@ function TabButton({ active, onClick, children }) {
 /* ========================= LIST TAB ========================= */
 
 function RushSalesBySourceList({ refreshKey }) {
+  // BASE STATE
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [search, setSearch] = useState("");
 
+  // FILTERS
+  const [search, setSearch] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
+  // PAGINATION
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
 
+  // IMPORT
   const fileRef = useRef(null);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
+  // SELECTED ROWS (checkbox)
+  const [selected, setSelected] = useState(new Set());
+
+  // FETCH DATA
   useEffect(() => {
     fetchRows();
   }, [refreshKey]);
@@ -88,10 +96,12 @@ function RushSalesBySourceList({ refreshKey }) {
     setLoading(false);
   }
 
+  // RESET PAGE ON FILTER CHANGE
   useEffect(() => {
     setPage(1);
   }, [search, fromMonth, toMonth, fromDate, toDate, yearFilter, pageSize]);
 
+  // YEAR OPTIONS
   const yearOptions = useMemo(() => {
     const ys = new Set();
     rows.forEach((r) => {
@@ -101,9 +111,11 @@ function RushSalesBySourceList({ refreshKey }) {
     return Array.from(ys).sort((a, b) => a - b);
   }, [rows]);
 
+  // FILTERED LIST
   const filtered = useMemo(() => {
     let list = [...rows];
 
+    // 1) Text search
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r) =>
@@ -118,6 +130,7 @@ function RushSalesBySourceList({ refreshKey }) {
       );
     }
 
+    // 2) Date-based filters
     list = list.filter((r) => {
       const d = normalize(r.created_at);
       const y = getYear(r.created_at);
@@ -135,14 +148,54 @@ function RushSalesBySourceList({ refreshKey }) {
     return list;
   }, [rows, search, yearFilter, fromMonth, toMonth, fromDate, toDate]);
 
+  // PAGINATION
   const total = filtered.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const safePage = Math.max(1, Math.min(page, totalPages));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+
   const startIndex = (safePage - 1) * pageSize;
   const pageRows = filtered.slice(startIndex, startIndex + pageSize);
 
+  /* ========================= CHECKBOX LOGIC ========================= */
+
+  function toggleSelect(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    setSelected(new Set(pageRows.map((r) => r.id)));
+  }
+
+  function unselectAll() {
+    setSelected(new Set());
+  }
+
+  async function deleteSelected() {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} row(s)?`)) return;
+
+    let ok = 0;
+
+    for (const id of selected) {
+      await supabase.from(TABLE).delete().eq("id", id);
+      ok++;
+    }
+
+    setRows((prev) => prev.filter((r) => !selected.has(r.id)));
+    setSelected(new Set());
+    alert(`Deleted ${ok} row(s).`);
+  }
+
+  /* ========================= EXPORT ========================= */
+
   function exportCSV() {
-    if (!filtered.length) return alert("No rows to export.");
+    const list = filtered.length ? filtered : rows;
+
+    if (!list.length) return alert("No rows to export.");
 
     const headers = [
       "Source Code",
@@ -162,28 +215,32 @@ function RushSalesBySourceList({ refreshKey }) {
 
     const csv =
       "\uFEFF" +
-      [headers.join(","), ...filtered.map((r) =>
-        [
-          r.source_code,
-          r.source_code_description,
-          r.product_code,
-          r.product_description,
-          r.unit_price,
-          r.units_sold,
-          r.sales_amount,
-          r.units_returned,
-          r.returns_amount,
-          r.net_units,
-          r.net_sales,
-          r.currency,
-          normalize(r.created_at),
-        ]
-          .map(csvEscape)
-          .join(",")
-      )].join("\n");
+      [
+        headers.join(","),
+        ...list.map((r) =>
+          [
+            r.source_code,
+            r.source_code_description,
+            r.product_code,
+            r.product_description,
+            r.unit_price,
+            r.units_sold,
+            r.sales_amount,
+            r.units_returned,
+            r.returns_amount,
+            r.net_units,
+            r.net_sales,
+            r.currency,
+            normalize(r.created_at),
+          ]
+            .map(csvEscape)
+            .join(",")
+        ),
+      ].join("\n");
 
     downloadFile("rush_sales_by_source.csv", csv);
   }
+  /* ========================= IMPORT HANDLER ========================= */
 
   function openImport() {
     fileRef.current?.click();
@@ -199,47 +256,44 @@ function RushSalesBySourceList({ refreshKey }) {
       const text = await file.text();
       const { headers, records } = parseCsv(text);
 
-    const h = (name) =>
-  headers.find((x) => x.toLowerCase() === name.toLowerCase());
+      const h = (name) =>
+        headers.find((x) => x.toLowerCase() === name.toLowerCase());
 
-const today = new Date().toISOString().slice(0, 10);
+      const today = new Date().toISOString().slice(0, 10);
 
-const rowsToInsert = records.map((r) => {
-  const reportDate = normalize(r[h("Report Date")]) || today;
-  return {
-    source_code: r[h("Source Code")] || "",
-    source_code_description: r[h("Source Code Description")] || "",
-    product_code: r[h("Product")] || "",
-    product_description: r[h("Description")] || "",
-    unit_price: Number(r[h("Unit Price")] || 0),
-    units_sold: Number(r[h("# Sold")] || 0),
-    sales_amount: Number(r[h("Sales")] || 0),
-    units_returned: Number(r[h("# Returned")] || 0),
-    returns_amount: Number(r[h("Returns")] || 0),
-    net_units: Number(r[h("# Net Units")] || 0),
-    net_sales: Number(r[h("Net Sales")] || 0),
-    currency: r[h("Currency")] || "USD",
-    report_date: reportDate,           // optional, if column exists
-    entry_date: reportDate,            // optional, if you have this column
-    created_at: new Date().toISOString(),
-  };
-});
+      const rowsToInsert = records.map((r) => {
+        const reportDate = normalize(r[h("Report Date")]) || today;
+        return {
+          source_code: r[h("Source Code")] || "",
+          source_code_description: r[h("Source Code Description")] || "",
+          product_code: r[h("Product")] || "",
+          product_description: r[h("Description")] || "",
+          unit_price: Number(r[h("Unit Price")] || 0),
+          units_sold: Number(r[h("# Sold")] || 0),
+          sales_amount: Number(r[h("Sales")] || 0),
+          units_returned: Number(r[h("# Returned")] || 0),
+          returns_amount: Number(r[h("Returns")] || 0),
+          net_units: Number(r[h("# Net Units")] || 0),
+          net_sales: Number(r[h("Net Sales")] || 0),
+          currency: r[h("Currency")] || "USD",
+          report_date: reportDate,
+          entry_date: reportDate,
+          created_at: new Date().toISOString(),
+        };
+      });
 
       const { error } = await supabase.from(TABLE).insert(rowsToInsert);
       if (error) throw error;
 
       fetchRows();
+      setImportMsg(`Imported ${rowsToInsert.length} row(s).`);
     } catch (e) {
       setImportMsg("Import failed: " + e.message);
     }
     setImporting(false);
   }
 
-  async function handleDelete(id) {
-    if (!confirm("Delete entry?")) return;
-    await supabase.from(TABLE).delete().eq("id", id);
-    setRows((s) => s.filter((x) => x.id !== id));
-  }
+  /* ========================= CLEAR FILTERS ========================= */
 
   function clearFilters() {
     setSearch("");
@@ -252,50 +306,71 @@ const rowsToInsert = records.map((r) => {
 
   return (
     <div className="space-y-3">
+
       {/* FILTERS */}
       <div className="flex flex-wrap items-end gap-3">
 
         <Input label="Search" value={search} setter={setSearch} w="w-64" />
 
-        <Select label="Year" value={yearFilter} setter={setYearFilter}
+        <Select
+          label="Year"
+          value={yearFilter}
+          setter={setYearFilter}
           options={yearOptions.map((y) => [y, y])}
         />
 
-        <Select label="From Month" value={fromMonth} setter={setFromMonth}
-          options={months}
-        />
-
-        <Select label="To Month" value={toMonth} setter={setToMonth}
-          options={months}
-        />
+        <Select label="From Month" value={fromMonth} setter={setFromMonth} options={months} />
+        <Select label="To Month" value={toMonth} setter={setToMonth} options={months} />
 
         <DateInput label="From Date" value={fromDate} setter={setFromDate} />
         <DateInput label="To Date" value={toDate} setter={setToDate} />
 
+        {/* ACTION BUTTONS */}
         <div className="ml-auto flex gap-2">
+
+      
+
           <button className="border px-3 py-2 text-xs" onClick={clearFilters}>
             Clear
           </button>
           <button className="border px-4 py-2" onClick={fetchRows}>
             Refresh
           </button>
+
           <button className="bg-black text-white px-4 py-2" onClick={exportCSV}>
             Export CSV
           </button>
+
           <button className="border px-4 py-2" onClick={openImport}>
             Import CSV
           </button>
           <input type="file" ref={fileRef} onChange={handleImportChange} className="hidden" />
+              {/* DELETE SELECTED */}
+          <button
+            className="border border-red-600 text-red-600 px-4 py-2 text-xs rounded hover:bg-red-50"
+            disabled={selected.size === 0}
+            onClick={deleteSelected}
+          >
+            Delete Selected ({selected.size})
+          </button>
         </div>
       </div>
 
       {importMsg && <div className="text-xs text-gray-600">{importMsg}</div>}
 
-      {/* TABLE */}
+      {/* ========================= TABLE ========================= */}
+
       <div className="border rounded overflow-auto">
-        <table className="min-w-[1400px] text-sm">
+        <table className="min-w-[1500px] text-sm">
           <thead className="bg-gray-50">
             <tr>
+              <Th>
+                <input
+                  type="checkbox"
+                  checked={pageRows.length > 0 && pageRows.every((r) => selected.has(r.id))}
+                  onChange={(e) => (e.target.checked ? selectAllVisible() : unselectAll())}
+                />
+              </Th>
               <Th>#</Th>
               <Th>Source Code</Th>
               <Th>Description</Th>
@@ -316,12 +391,24 @@ const rowsToInsert = records.map((r) => {
 
           <tbody>
             {loading ? (
-              <tr><td colSpan="15" className="p-6 text-center">Loading…</td></tr>
+              <tr>
+                <td colSpan="16" className="p-6 text-center">Loading…</td>
+              </tr>
             ) : pageRows.length === 0 ? (
-              <tr><td colSpan="15" className="p-6 text-center">No entries</td></tr>
+              <tr>
+                <td colSpan="16" className="p-6 text-center">No entries</td>
+              </tr>
             ) : (
               pageRows.map((r, i) => (
                 <tr key={r.id} className="border-t">
+                  <Td>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(r.id)}
+                      onChange={() => toggleSelect(r.id)}
+                    />
+                  </Td>
+
                   <Td>{startIndex + i + 1}</Td>
                   <Td>{r.source_code}</Td>
                   <Td>{r.source_code_description}</Td>
@@ -336,8 +423,12 @@ const rowsToInsert = records.map((r) => {
                   <Td>{r.net_sales}</Td>
                   <Td>{r.currency}</Td>
                   <Td>{fmt(r.created_at)}</Td>
+
                   <Td>
-                    <button className="text-red-600" onClick={() => handleDelete(r.id)}>
+                    <button
+                      className="text-red-600 hover:underline"
+                      onClick={() => handleDelete(r.id)}
+                    >
                       Delete
                     </button>
                   </Td>
@@ -348,27 +439,41 @@ const rowsToInsert = records.map((r) => {
         </table>
       </div>
 
-      {/* PAGINATION */}
+      {/* ========================= PAGINATION ========================= */}
+
       <div className="flex justify-between text-xs px-1">
         <span>
-          Showing {startIndex + 1}–{startIndex + pageRows.length} of {total}
+          Showing {pageRows.length ? startIndex + 1 : 0}–
+          {startIndex + pageRows.length} of {total}
         </span>
+
         <div className="flex gap-2">
-          <button className="border px-3 py-1" disabled={safePage <= 1}
-            onClick={() => setPage((p) => p - 1)}>
+
+          <button
+            className="border px-3 py-1"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
             Prev
           </button>
-          <span>Page {safePage} / {totalPages || 1}</span>
-          <button className="border px-3 py-1" disabled={safePage >= totalPages}
-            onClick={() => setPage((p) => p + 1)}>
+
+          <span>
+            Page {safePage} / {totalPages}
+          </span>
+
+          <button
+            className="border px-3 py-1"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
             Next
           </button>
+
         </div>
       </div>
     </div>
   );
 }
-
 /* ========================= NEW ENTRY TAB ========================= */
 
 function RushSalesBySourceForm({ onCreated }) {
@@ -429,7 +534,6 @@ function RushSalesBySourceForm({ onCreated }) {
         net_sales: "",
         currency: "USD",
       });
-
     } catch (e) {
       setErr(e.message);
     }
@@ -476,9 +580,13 @@ function RushSalesBySourceForm({ onCreated }) {
 }
 
 /* ========================= UI HELPERS ========================= */
+
 const Th = ({ children }) => (
-  <th className="px-3 py-2 text-xs font-semibold whitespace-nowrap">{children}</th>
+  <th className="px-3 py-2 text-xs font-semibold whitespace-nowrap">
+    {children}
+  </th>
 );
+
 const Td = ({ children }) => (
   <td className="px-3 py-2 whitespace-nowrap">{children}</td>
 );
@@ -544,6 +652,8 @@ function Select({ label, value, setter, options }) {
   );
 }
 
+/* ========================= CSV EXPORT HELPERS ========================= */
+
 function csvEscape(v) {
   if (v === undefined || v === null) return "";
   const s = String(v);
@@ -552,7 +662,9 @@ function csvEscape(v) {
 }
 
 function downloadFile(name, content) {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([content], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -601,6 +713,7 @@ function fmt(date) {
 }
 
 /* ========================= CSV PARSER ========================= */
+
 function parseCsv(text) {
   const rows = [];
   let cur = "";
@@ -615,7 +728,9 @@ function parseCsv(text) {
         if (text[i + 1] === '"') {
           cur += '"';
           i++;
-        } else inQ = false;
+        } else {
+          inQ = false;
+        }
       } else {
         cur += ch;
       }

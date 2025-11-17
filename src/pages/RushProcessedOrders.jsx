@@ -47,7 +47,6 @@ function TabButton({ active, onClick, children }) {
     </button>
   );
 }
-
 /* ============================================================
    LIST VIEW
 ============================================================ */
@@ -58,7 +57,7 @@ function RushProcessedOrdersList({ refreshKey }) {
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
 
-  // FILTERS based on created_at
+  // FILTERS
   const [yearFilter, setYearFilter] = useState("");
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
@@ -72,15 +71,16 @@ function RushProcessedOrdersList({ refreshKey }) {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState("");
 
+  // NEW — Selected rows for bulk delete
+  const [selected, setSelected] = useState([]);
+
   useEffect(() => {
     fetchRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
   async function fetchRows() {
     setLoading(true);
     setErr("");
-
     try {
       const { data, error } = await supabase
         .from(TABLE)
@@ -89,15 +89,24 @@ function RushProcessedOrdersList({ refreshKey }) {
         .order("id", { ascending: false });
 
       if (error) throw error;
-
       setRows(data || []);
     } catch (e) {
-      console.error(e);
-      setErr(e.message || "Failed to load processed orders");
+      setErr(e.message);
     } finally {
       setLoading(false);
     }
   }
+
+  // Reset selection when filters/table changes
+  useEffect(() => setSelected([]), [
+    rows,
+    search,
+    yearFilter,
+    fromMonth,
+    toMonth,
+    fromDate,
+    toDate,
+  ]);
 
   async function deleteRow(id) {
     if (!confirm("Do you want to delete this entry?")) return;
@@ -110,12 +119,55 @@ function RushProcessedOrdersList({ refreshKey }) {
     }
   }
 
-  // Reset pagination on filter / size change
-  useEffect(() => {
-    setPage(1);
-  }, [search, yearFilter, fromMonth, toMonth, fromDate, toDate, pageSize]);
+  /* -------------------------
+        MULTI SELECT LOGIC
+  -------------------------- */
+  function toggleSelect(id) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
 
-  // Build year dropdown from created_at
+  function toggleSelectAll() {
+    if (selected.length === pageRows.length) {
+      setSelected([]);
+    } else {
+      setSelected(pageRows.map((r) => r.id));
+    }
+  }
+
+  async function deleteSelected() {
+    if (!selected.length) return;
+    if (!confirm(`Delete ${selected.length} selected entries?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from(TABLE)
+        .delete()
+        .in("id", selected);
+      if (error) throw error;
+
+      setRows((prev) => prev.filter((r) => !selected.includes(r.id)));
+      setSelected([]);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  /* -------------------------
+        FILTER LOGIC
+  -------------------------- */
+
+  useEffect(() => setPage(1), [
+    search,
+    yearFilter,
+    fromMonth,
+    toMonth,
+    fromDate,
+    toDate,
+    pageSize,
+  ]);
+
   const yearOptions = useMemo(() => {
     const ys = new Set();
     rows.forEach((r) => {
@@ -125,11 +177,9 @@ function RushProcessedOrdersList({ refreshKey }) {
     return Array.from(ys).sort((a, b) => a - b);
   }, [rows]);
 
-  // Filtering logic
   const filtered = useMemo(() => {
     let list = rows;
 
-    // search
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r) =>
@@ -149,14 +199,10 @@ function RushProcessedOrdersList({ refreshKey }) {
       );
     }
 
-    // year filter (created_at)
     if (yearFilter) {
-      list = list.filter(
-        (r) => getYear(r.created_at) === Number(yearFilter)
-      );
+      list = list.filter((r) => getYear(r.created_at) === Number(yearFilter));
     }
 
-    // month range (created_at)
     if (fromMonth || toMonth) {
       list = list.filter((r) => {
         const key = getMonthKey(r.created_at);
@@ -167,7 +213,6 @@ function RushProcessedOrdersList({ refreshKey }) {
       });
     }
 
-    // date range (created_at)
     if (fromDate || toDate) {
       list = list.filter((r) => {
         const d = normalizeDate(r.created_at);
@@ -187,6 +232,10 @@ function RushProcessedOrdersList({ refreshKey }) {
   const safePage = Math.min(Math.max(1, page), totalPages);
   const startIndex = (safePage - 1) * pageSize;
   const pageRows = filtered.slice(startIndex, startIndex + pageSize);
+
+  /* -------------------------
+        EXPORT CSV (filtered)
+  -------------------------- */
 
   function exportCSV() {
     if (!filtered.length) {
@@ -246,6 +295,10 @@ function RushProcessedOrdersList({ refreshKey }) {
     URL.revokeObjectURL(url);
   }
 
+  /* -------------------------
+        IMPORT CSV
+  -------------------------- */
+
   function openImport() {
     fileRef.current?.click();
   }
@@ -289,7 +342,6 @@ function RushProcessedOrdersList({ refreshKey }) {
         carrier_service: r[h("Carrier / Service")] || "",
         tracking_number: r[h("Tracking Number")] || "",
         serials: r[h("Serials")] || "",
-        // keep entry_date, reporting uses created_at
         entry_date: normalizeDate(r[h("Entry Date")] || today),
       }));
 
@@ -301,7 +353,6 @@ function RushProcessedOrdersList({ refreshKey }) {
       setImportMsg("Import completed successfully.");
       await fetchRows();
     } catch (err) {
-      console.error(err);
       setImportMsg("Import failed: " + err.message);
     } finally {
       setImporting(false);
@@ -332,7 +383,7 @@ function RushProcessedOrdersList({ refreshKey }) {
           />
         </div>
 
-        {/* YEAR (created_at) */}
+        {/* YEAR */}
         <div>
           <div className="text-xs mb-1 font-medium">Year (Created)</div>
           <select
@@ -347,7 +398,7 @@ function RushProcessedOrdersList({ refreshKey }) {
           </select>
         </div>
 
-        {/* MONTH FROM (created_at) */}
+        {/* MONTH FROM */}
         <div>
           <div className="text-xs mb-1 font-medium">From Month (Created)</div>
           <input
@@ -358,7 +409,7 @@ function RushProcessedOrdersList({ refreshKey }) {
           />
         </div>
 
-        {/* MONTH TO (created_at) */}
+        {/* MONTH TO */}
         <div>
           <div className="text-xs mb-1 font-medium">To Month (Created)</div>
           <input
@@ -369,7 +420,7 @@ function RushProcessedOrdersList({ refreshKey }) {
           />
         </div>
 
-        {/* DATE FROM (created_at) */}
+        {/* DATE RANGE */}
         <div>
           <div className="text-xs mb-1 font-medium">From Date (Created)</div>
           <input
@@ -380,7 +431,6 @@ function RushProcessedOrdersList({ refreshKey }) {
           />
         </div>
 
-        {/* DATE TO (created_at) */}
         <div>
           <div className="text-xs mb-1 font-medium">To Date (Created)</div>
           <input
@@ -391,7 +441,7 @@ function RushProcessedOrdersList({ refreshKey }) {
           />
         </div>
 
-        {/* Right side */}
+        {/* Right Side */}
         <div className="ml-auto flex items-center gap-3">
           <button
             className="rounded border px-3 py-2 text-xs"
@@ -400,6 +450,8 @@ function RushProcessedOrdersList({ refreshKey }) {
             Clear Filters
           </button>
 
+       
+
           <button
             onClick={exportCSV}
             className="rounded bg-black text-white px-4 py-2 text-xs"
@@ -407,9 +459,13 @@ function RushProcessedOrdersList({ refreshKey }) {
             Export CSV
           </button>
 
-          <button onClick={openImport} className="rounded border px-4 py-2 text-xs">
+          <button
+            onClick={openImport}
+            className="rounded border px-4 py-2 text-xs"
+          >
             {importing ? "Importing…" : "Import CSV"}
           </button>
+
           <input
             ref={fileRef}
             className="hidden"
@@ -417,10 +473,20 @@ function RushProcessedOrdersList({ refreshKey }) {
             accept=".csv,text/csv"
             onChange={handleImportChange}
           />
+          {/* NEW — Delete Selected */}
+          <button
+            className="rounded border px-3 py-2 text-xs text-red-600"
+            onClick={deleteSelected}
+            disabled={selected.length === 0}
+          >
+            Delete Selected ({selected.length})
+          </button>
         </div>
       </div>
 
-      {importMsg && <div className="text-xs text-gray-600">{importMsg}</div>}
+      {importMsg && (
+        <div className="text-xs text-gray-600">{importMsg}</div>
+      )}
 
       {err && (
         <div className="text-sm text-red-600 border border-red-200 bg-red-50 px-3 py-2 rounded">
@@ -430,9 +496,21 @@ function RushProcessedOrdersList({ refreshKey }) {
 
       {/* Table */}
       <div className="border rounded overflow-auto">
-        <table className="w-[1500px] text-sm">
+        <table className="w-[1600px] text-sm">
           <thead className="bg-gray-50">
             <tr>
+              {/* NEW CHECKBOX HEADER */}
+              <Th>
+                <input
+                  type="checkbox"
+                  checked={
+                    pageRows.length > 0 &&
+                    selected.length === pageRows.length
+                  }
+                  onChange={toggleSelectAll}
+                />
+              </Th>
+
               <Th>#</Th>
               <Th>Order</Th>
               <Th>Invoice Part</Th>
@@ -456,19 +534,28 @@ function RushProcessedOrdersList({ refreshKey }) {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={17} className="p-6 text-center">
+                <td colSpan={18} className="p-6 text-center">
                   Loading…
                 </td>
               </tr>
             ) : pageRows.length === 0 ? (
               <tr>
-                <td colSpan={17} className="p-6 text-center">
+                <td colSpan={18} className="p-6 text-center">
                   No processed orders found
                 </td>
               </tr>
             ) : (
               pageRows.map((r, i) => (
                 <tr key={r.id} className="border-t hover:bg-gray-50">
+                  {/* NEW CHECKBOX CELL */}
+                  <Td>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(r.id)}
+                      onChange={() => toggleSelect(r.id)}
+                    />
+                  </Td>
+
                   <Td>{startIndex + i + 1}</Td>
                   <Td>{r.order_no}</Td>
                   <Td>{r.invoice_part}</Td>
@@ -485,6 +572,7 @@ function RushProcessedOrdersList({ refreshKey }) {
                   <Td>{r.carrier_service}</Td>
                   <Td>{r.tracking_number}</Td>
                   <Td>{r.serials}</Td>
+
                   <Td>
                     <button
                       className="text-red-600 hover:underline text-xs"
@@ -606,8 +694,7 @@ function RushProcessedOrdersForm({ onCreated }) {
 
       onCreated?.();
     } catch (e) {
-      console.error(e);
-      setErr(e.message || "Failed to save");
+      setErr(e.message);
     } finally {
       setSaving(false);
     }
@@ -618,9 +705,7 @@ function RushProcessedOrdersForm({ onCreated }) {
       onSubmit={handleCreate}
       className="border rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-3"
     >
-      <div className="md:col-span-3 text-sm font-semibold">
-        New Processed Order
-      </div>
+      <div className="md:col-span-3 text-sm font-semibold">New Processed Order</div>
 
       {err && (
         <div className="md:col-span-3 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded">
@@ -640,27 +725,9 @@ function RushProcessedOrdersForm({ onCreated }) {
       {field("Company", "company", form.company, update)}
       {field("Email", "email", form.email, update, "email")}
 
-      {field(
-        "Units On Order",
-        "units_on_order",
-        form.units_on_order,
-        update,
-        "number"
-      )}
-      {field(
-        "Units Invoiced",
-        "units_invoiced",
-        form.units_invoiced,
-        update,
-        "number"
-      )}
-      {field(
-        "Units on Back Order",
-        "units_on_back_order",
-        form.units_on_back_order,
-        update,
-        "number"
-      )}
+      {field("Units On Order", "units_on_order", form.units_on_order, update, "number")}
+      {field("Units Invoiced", "units_invoiced", form.units_invoiced, update, "number")}
+      {field("Units on Back Order", "units_on_back_order", form.units_on_back_order, update, "number")}
 
       {field("Carrier / Service", "carrier_service", form.carrier_service, update)}
       {field("Tracking Number", "tracking_number", form.tracking_number, update)}
@@ -700,11 +767,7 @@ function RushProcessedOrdersForm({ onCreated }) {
           Clear
         </button>
 
-        <button
-          type="submit"
-          className="px-4 py-2 bg-black text-white rounded"
-          disabled={saving}
-        >
+        <button type="submit" className="px-4 py-2 bg-black text-white rounded" disabled={saving}>
           {saving ? "Saving…" : "Add Order"}
         </button>
       </div>
@@ -786,6 +849,7 @@ function parseCsv(text) {
     row.push(cur);
     cur = "";
   };
+
   const pushRow = () => {
     rows.push(row);
     row = [];
@@ -793,6 +857,7 @@ function parseCsv(text) {
 
   while (i < text.length) {
     const ch = text[i];
+
     if (inQ) {
       if (ch === '"') {
         if (text[i + 1] === '"') {
@@ -808,36 +873,42 @@ function parseCsv(text) {
       i++;
       continue;
     }
+
     if (ch === '"') {
       inQ = true;
       i++;
       continue;
     }
+
     if (ch === ",") {
       pushCell();
       i++;
       continue;
     }
+
     if (ch === "\r") {
       i++;
       continue;
     }
+
     if (ch === "\n") {
       pushCell();
       pushRow();
       i++;
       continue;
     }
+
     cur += ch;
     i++;
   }
+
   pushCell();
   if (row.length) pushRow();
 
   const headers = (rows.shift() || []).map((h) => String(h || "").trim());
   const records = rows
     .filter((r) => r.some((c) => String(c).trim() !== ""))
-    .map((r) => Object.fromEntries(headers.map((h, idx) => [h, r[idx] ?? ""])));
+    .map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""])));
+
   return { headers, records };
 }
-  

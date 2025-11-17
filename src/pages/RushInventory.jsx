@@ -51,16 +51,16 @@ function TabButton({ active, onClick, children }) {
 
 function RushInventoryList({ refreshKey }) {
   const [rows, setRows] = useState([]);
+  const [selected, setSelected] = useState([]); // multi-select
   const [loading, setLoading] = useState(false);
+
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
 
   const [fromMonth, setFromMonth] = useState("");
   const [toMonth, setToMonth] = useState("");
-
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
   const [yearFilter, setYearFilter] = useState("");
 
   const [pageSize, setPageSize] = useState(25);
@@ -82,7 +82,7 @@ function RushInventoryList({ refreshKey }) {
       const { data, error } = await supabase
         .from(TABLE)
         .select("*")
-        // 🔑 use created_at for list order (latest imports / edits first)
+        // latest imports / edits first
         .order("created_at", { ascending: false })
         .order("stock_number", { ascending: true });
 
@@ -96,10 +96,15 @@ function RushInventoryList({ refreshKey }) {
     }
   }
 
-  // Reset page when filters change
+  // Reset page when filters / size change
   useEffect(() => {
     setPage(1);
   }, [search, fromMonth, toMonth, fromDate, toDate, yearFilter, pageSize]);
+
+  // Reset selection when data or filters change
+  useEffect(() => {
+    setSelected([]);
+  }, [rows, search, fromMonth, toMonth, fromDate, toDate, yearFilter]);
 
   // build year dropdown from created_at
   const yearOptions = useMemo(() => {
@@ -168,6 +173,45 @@ function RushInventoryList({ refreshKey }) {
   const showingFrom = total === 0 ? 0 : startIndex + 1;
   const showingTo = startIndex + pageRows.length;
 
+  /* -----------------------------
+        MULTI SELECT LOGIC
+  ------------------------------ */
+
+  function toggleSelect(id) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSelectAll() {
+    if (!pageRows.length) return;
+    if (selected.length === pageRows.length) {
+      setSelected([]);
+    } else {
+      setSelected(pageRows.map((r) => r.id));
+    }
+  }
+
+  async function deleteSelected() {
+    if (!selected.length) return;
+    if (!confirm(`Delete ${selected.length} selected row(s)?`)) return;
+
+    try {
+      const { error } = await supabase.from(TABLE).delete().in("id", selected);
+      if (error) throw error;
+
+      setRows((prev) => prev.filter((r) => !selected.includes(r.id)));
+      setSelected([]);
+    } catch (e) {
+      console.error(e);
+      alert(e.message || "Failed to delete selected rows");
+    }
+  }
+
+  /* -----------------------------
+        EXPORT CSV (filtered)
+  ------------------------------ */
+
   function exportCSV() {
     if (!filtered.length) {
       alert("No rows to export.");
@@ -218,6 +262,10 @@ function RushInventoryList({ refreshKey }) {
     URL.revokeObjectURL(url);
   }
 
+  /* -----------------------------
+        IMPORT CSV
+  ------------------------------ */
+
   function openImport() {
     setImportMsg("");
     fileRef.current?.click();
@@ -257,7 +305,7 @@ function RushInventoryList({ refreshKey }) {
         list_price: Number(
           String(r[h("List Price")] || "0").replace(/[^\d.-]/g, "")
         ),
-        // 🔑 keep entry_date (optional column), reporting uses created_at
+        // keep entry_date (optional), reporting uses created_at
         entry_date: normalizeDate(r[h("Entry Date")] || todayIso),
       }));
 
@@ -275,6 +323,10 @@ function RushInventoryList({ refreshKey }) {
       setImporting(false);
     }
   }
+
+  /* -----------------------------
+        DELETE SINGLE ROW
+  ------------------------------ */
 
   async function handleDelete(id) {
     if (!window.confirm("Delete this inventory row?")) return;
@@ -301,6 +353,7 @@ function RushInventoryList({ refreshKey }) {
     <div className="space-y-4">
       {/* Filters + actions */}
       <div className="flex flex-wrap items-end gap-3">
+        {/* Search */}
         <div>
           <div className="text-xs font-medium mb-1">Search</div>
           <input
@@ -370,6 +423,7 @@ function RushInventoryList({ refreshKey }) {
           />
         </div>
 
+        {/* Right side: page size + actions */}
         <div className="ml-auto flex flex-wrap items-center gap-3">
           {/* Page size selector */}
           <div className="flex items-center gap-1 text-xs">
@@ -399,20 +453,26 @@ function RushInventoryList({ refreshKey }) {
           >
             Refresh
           </button>
+
+          {/* Bulk delete */}
+      
+
           <button
             onClick={exportCSV}
-            className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800"
+            className="rounded bg-black text-white px-4 py-2 hover:bg-gray-800 text-xs"
             disabled={loading || importing}
           >
             Export CSV
           </button>
+
           <button
             onClick={openImport}
-            className="rounded border px-4 py-2 hover:bg-gray-50"
+            className="rounded border px-4 py-2 hover:bg-gray-50 text-xs"
             disabled={loading || importing}
           >
             {importing ? "Importing…" : "Import CSV"}
           </button>
+
           <input
             ref={fileRef}
             type="file"
@@ -420,6 +480,13 @@ function RushInventoryList({ refreshKey }) {
             className="hidden"
             onChange={handleImportChange}
           />
+              <button
+            className="rounded border px-3 py-2 text-xs text-red-600"
+            onClick={deleteSelected}
+            disabled={selected.length === 0}
+          >
+            Delete Selected ({selected.length})
+          </button>
         </div>
       </div>
 
@@ -435,6 +502,17 @@ function RushInventoryList({ refreshKey }) {
         <table className="w-[1200px] max-w-none text-sm">
           <thead className="bg-gray-50">
             <tr>
+              {/* Checkbox first column */}
+              <Th>
+                <input
+                  type="checkbox"
+                  checked={
+                    pageRows.length > 0 &&
+                    selected.length === pageRows.length
+                  }
+                  onChange={toggleSelectAll}
+                />
+              </Th>
               <Th>#</Th>
               <Th>Stock Number</Th>
               <Th>Description</Th>
@@ -451,13 +529,13 @@ function RushInventoryList({ refreshKey }) {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={11} className="p-6 text-center">
+                <td colSpan={12} className="p-6 text-center">
                   Loading…
                 </td>
               </tr>
             ) : pageRows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="p-6 text-center">
+                <td colSpan={12} className="p-6 text-center">
                   No inventory rows
                 </td>
               </tr>
@@ -467,6 +545,13 @@ function RushInventoryList({ refreshKey }) {
                   key={r.id || r.stock_number || i}
                   className="border-t hover:bg-gray-50"
                 >
+                  <Td>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(r.id)}
+                      onChange={() => toggleSelect(r.id)}
+                    />
+                  </Td>
                   <Td>{startIndex + i + 1}</Td>
                   <Td>{r.stock_number || "-"}</Td>
                   <Td>{r.description || "-"}</Td>
@@ -543,7 +628,7 @@ function RushInventoryForm({ onCreated }) {
       committed: "",
       back_ordered: "",
       list_price: "",
-      entry_date: "", // 🔑 kept for history; reporting uses created_at
+      entry_date: "", // kept for history; reporting uses created_at
     };
   }
 
@@ -653,7 +738,7 @@ function field(label, key, value, update, type = "text") {
       <input
         type={type}
         className="w-full border rounded px-3 py-2"
-        value={type === "date" ? (value || "") : value}
+        value={type === "date" ? value || "" : value}
         onChange={update(key)}
       />
     </label>
