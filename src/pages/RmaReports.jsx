@@ -11,6 +11,43 @@ const CATEGORIES = ["product-fault", "warranty", "out-of-warranty", "other"];
 const ORGS = ["US", "EMEA"];
 const RMA_TYPES = ["Warranty", "Out of Warranty", "Advance Replacement"];
 
+/* ───────────────────────────────────────────────
+   REGION DERIVATION FALLBACK  
+   Always resolves region correctly even if DB has no organization saved
+────────────────────────────────────────────── */
+function deriveRegion(row) {
+  // if DB organization exists → use it
+  const dbOrg = (row.organization || "").trim().toUpperCase();
+  if (dbOrg === "US" || dbOrg === "EMEA") return dbOrg;
+
+  // else detect region from SKU
+  const sku = (row.product_sku || "").trim().toUpperCase();
+
+  if (!sku) return "Other";
+
+  // SKU-based US detection
+  if (
+    sku.endsWith("-O") ||
+    sku.endsWith("-B-O") ||
+    sku.endsWith("-R-O") ||
+    sku.endsWith("-C-O")
+  ) {
+    return "US";
+  }
+
+  // SKU-based EMEA detection
+  if (
+    sku.endsWith("-E") ||
+    sku.endsWith("-B-E") ||
+    sku.endsWith("-R-E") ||
+    sku.endsWith("-C-E")
+  ) {
+    return "EMEA";
+  }
+
+  return "Other";
+}
+
 export default function RmaReports() {
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +91,6 @@ export default function RmaReports() {
       }
     })();
   }, []);
-
   /* ───────────────────────────────────────────────
       LOAD STOCK (US + EMEA) FOR SELECTED MONTH
   ─────────────────────────────────────────────── */
@@ -87,7 +123,7 @@ export default function RmaReports() {
   }, [stockMonth]);
 
   /* ───────────────────────────────────────────────
-      YEAR OPTIONS from entry_date
+      YEAR OPTIONS FROM entry_date
   ─────────────────────────────────────────────── */
   const yearOptions = useMemo(() => {
     const setY = new Set();
@@ -98,7 +134,7 @@ export default function RmaReports() {
   }, [entries]);
 
   /* ───────────────────────────────────────────────
-      APPLY FILTERS TO RMA ENTRIES
+      APPLY FILTERS (WITH FALLBACK REGION)
   ─────────────────────────────────────────────── */
   function applyFilters(data) {
     return data.filter((row) => {
@@ -113,7 +149,10 @@ export default function RmaReports() {
       if (toMonth && m > Number(toMonth)) return false;
       if (fromDate && d < fromDate) return false;
       if (toDate && d > toDate) return false;
-      if (org && row.organization && row.organization !== org) return false;
+
+      // Region filtering (fallback)
+      const derived = deriveRegion(row);
+      if (org && derived !== org) return false;
 
       return true;
     });
@@ -122,7 +161,7 @@ export default function RmaReports() {
   const filteredEntries = applyFilters(entries);
 
   /* ───────────────────────────────────────────────
-      MONTHLY AGGREGATED RMA DATA
+      MONTHLY RMA AGGREGATION (WITH FALLBACK REGION)
   ─────────────────────────────────────────────── */
   const monthlyRma = useMemo(() => {
     const bucket = {};
@@ -131,6 +170,7 @@ export default function RmaReports() {
       const y = getYear(e.entry_date);
       const m = getMonth(e.entry_date);
       if (!y || !m) return;
+
       const key = `${y}-${m}`;
 
       if (!bucket[key]) {
@@ -148,7 +188,6 @@ export default function RmaReports() {
       }
 
       const qty = Number(e.quantity || 0);
-
       bucket[key].rma_count += 1;
       bucket[key].qty_total += qty;
 
@@ -158,9 +197,9 @@ export default function RmaReports() {
       else if (rt === "advance replacement")
         bucket[key].advance_replacement += 1;
 
-      const org = (e.organization || "").toUpperCase();
-      if (org === "US") bucket[key].us += 1;
-      if (org === "EMEA") bucket[key].emea += 1;
+      const region = deriveRegion(e);
+      if (region === "US") bucket[key].us += 1;
+      if (region === "EMEA") bucket[key].emea += 1;
     });
 
     return Object.values(bucket).sort((a, b) => {
@@ -170,7 +209,7 @@ export default function RmaReports() {
   }, [filteredEntries]);
 
   /* ───────────────────────────────────────────────
-      KPI CALCULATIONS
+      KPI CALCULATION (W/ REGION FALLBACK)
   ─────────────────────────────────────────────── */
   const rmaKpi = useMemo(() => {
     const totalRmas = filteredEntries.length;
@@ -190,10 +229,11 @@ export default function RmaReports() {
     ).length;
 
     const us = filteredEntries.filter(
-      (e) => (e.organization || "").toUpperCase() === "US"
+      (e) => deriveRegion(e) === "US"
     ).length;
+
     const emea = filteredEntries.filter(
-      (e) => (e.organization || "").toUpperCase() === "EMEA"
+      (e) => deriveRegion(e) === "EMEA"
     ).length;
 
     const uniqueDevices = new Set(
@@ -220,7 +260,7 @@ export default function RmaReports() {
   }, [filteredEntries, monthlyRma]);
 
   /* ───────────────────────────────────────────────
-      STOCK KPI (US + EMEA FOR SELECTED MONTH)
+      STOCK KPI (UNCHANGED)
   ─────────────────────────────────────────────── */
   const stockKpi = useMemo(() => {
     function sum(arr, key) {
@@ -232,7 +272,6 @@ export default function RmaReports() {
       b_stock_received: sum(usStock, "b_stock_received"),
       new_stock_sent: sum(usStock, "new_stock_sent"),
       rma_bstock_rstock_sent: sum(usStock, "rma_bstock_rstock_sent"),
-      a_stock_received: sum(usStock, "a_stock_received"),
       awaiting_delivery_from_user: sum(usStock, "awaiting_delivery_from_user"),
       receive_only: sum(usStock, "receive_only"),
       awaiting_return_from_rush: sum(usStock, "awaiting_return_from_rush"),
@@ -250,9 +289,8 @@ export default function RmaReports() {
 
     return { usTotals, emeaTotals };
   }, [usStock, emeaStock]);
-
   /* ───────────────────────────────────────────────
-      CHARTS (RMA)
+      CHARTS (RMA) — using fallback region detection
   ─────────────────────────────────────────────── */
   const monthCategories = monthlyRma.map(
     (x) => `${x.year}-${pad(x.month)}`
@@ -306,14 +344,17 @@ export default function RmaReports() {
     },
   };
 
-  // RMAs by Organization
+  /* ───────────────────────────────────────────────
+      RMAs by Organization — FIXED
+  ─────────────────────────────────────────────── */
   const orgMap = { US: 0, EMEA: 0, Other: 0 };
   filteredEntries.forEach((e) => {
-    const o = (e.organization || "").toUpperCase();
-    if (o === "US") orgMap.US += 1;
-    else if (o === "EMEA") orgMap.EMEA += 1;
+    const region = deriveRegion(e); // ALWAYS safe
+    if (region === "US") orgMap.US += 1;
+    else if (region === "EMEA") orgMap.EMEA += 1;
     else orgMap.Other += 1;
   });
+
   const rmaByOrgChart = {
     series: [orgMap.US, orgMap.EMEA, orgMap.Other],
     options: {
@@ -322,15 +363,19 @@ export default function RmaReports() {
     },
   };
 
-  // Top Devices
+  /* ───────────────────────────────────────────────
+      Top Devices by RMA
+  ─────────────────────────────────────────────── */
   const deviceMap = {};
   filteredEntries.forEach((e) => {
     const d = e.device_name || "Unknown Device";
     deviceMap[d] = (deviceMap[d] || 0) + 1;
   });
+
   const topDevices = Object.entries(deviceMap)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10);
+
   const topDevicesChart = {
     series: [{ name: "RMA Count", data: topDevices.map(([_, v]) => v) }],
     options: {
@@ -340,7 +385,7 @@ export default function RmaReports() {
   };
 
   /* ───────────────────────────────────────────────
-      STOCK SUMMARY CHART (US vs EMEA)
+      STOCK SUMMARY CHART (unchanged)
   ─────────────────────────────────────────────── */
   const stockCategories = [
     "D Stock Received",
@@ -386,7 +431,7 @@ export default function RmaReports() {
   };
 
   /* ───────────────────────────────────────────────
-      PDF EXPORT
+      PDF EXPORT BUTTON
   ─────────────────────────────────────────────── */
   async function downloadPDF() {
     const canvas = await html2canvas(reportRef.current, { scale: 2 });
@@ -402,18 +447,9 @@ export default function RmaReports() {
 
   /* Month names */
   const months = [
-    ["01", "January"],
-    ["02", "February"],
-    ["03", "March"],
-    ["04", "April"],
-    ["05", "May"],
-    ["06", "June"],
-    ["07", "July"],
-    ["08", "August"],
-    ["09", "September"],
-    ["10", "October"],
-    ["11", "November"],
-    ["12", "December"],
+    ["01", "January"], ["02", "February"], ["03", "March"], ["04", "April"],
+    ["05", "May"], ["06", "June"], ["07", "July"], ["08", "August"],
+    ["09", "September"], ["10", "October"], ["11", "November"], ["12", "December"]
   ];
 
   function clearFilters() {
@@ -435,29 +471,13 @@ export default function RmaReports() {
     <div className="p-4 space-y-6" ref={reportRef}>
       {/* FILTER PANEL */}
       <div className="border p-4 rounded-xl bg-white grid grid-cols-1 md:grid-cols-6 gap-4">
-        <Select
-          label="Year"
-          value={year}
-          setter={setYear}
-          options={yearOptions.map((y) => [y, y])}
-        />
+        <Select label="Year" value={year} setter={setYear} options={yearOptions.map((y) => [y, y])} />
 
-        <Select
-          label="From Month"
-          value={fromMonth}
-          setter={setFromMonth}
-          options={months}
-        />
+        <Select label="From Month" value={fromMonth} setter={setFromMonth} options={months} />
 
-        <Select
-          label="To Month"
-          value={toMonth}
-          setter={setToMonth}
-          options={months}
-        />
+        <Select label="To Month" value={toMonth} setter={setToMonth} options={months} />
 
         <InputDate label="From Date (dd/mm/yyyy)" value={fromDate} setter={setFromDate} />
-
         <InputDate label="To Date (dd/mm/yyyy)" value={toDate} setter={setToDate} />
 
         <Select
@@ -467,7 +487,7 @@ export default function RmaReports() {
           options={[["US", "US"], ["EMEA", "EMEA"]]}
         />
 
-        {/* Stock Month + Buttons (full width on md) */}
+        {/* Stock Month + Buttons */}
         <div className="md:col-span-3 flex flex-wrap items-end gap-3">
           <div>
             <div className="text-xs mb-1">Stock Month (US / EMEA)</div>
@@ -497,7 +517,7 @@ export default function RmaReports() {
         </div>
       </div>
 
-      {/* KPI GRID (RMA) */}
+      {/* KPI GRID — RMA */}
       <KPIGrid
         kpi={[
           ["Total RMAs", rmaKpi.totalRmas],
@@ -512,7 +532,7 @@ export default function RmaReports() {
         ]}
       />
 
-      {/* KPI GRID (STOCK) */}
+      {/* KPI GRID — STOCK */}
       <KPIGrid
         title={`Stock (${stockMonth}) – US / EMEA`}
         kpi={[
@@ -547,7 +567,7 @@ export default function RmaReports() {
         ]}
       />
 
-      {/* CHARTS – RMA */}
+      {/* CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartBox title="Monthly RMAs" chart={monthlyRmaChart} type="line" />
         <ChartBox title="Monthly Quantity" chart={monthlyQtyChart} type="bar" />
