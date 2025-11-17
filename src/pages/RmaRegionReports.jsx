@@ -6,7 +6,7 @@ import jsPDF from "jspdf";
 import { apiUrl } from "@/lib/apiBase";
 
 /**
- * Shared column definition – matches the Excel layout you sent
+ * Shared column definition – matches the Excel layout
  */
 const COLUMNS = [
   { key: "product", label: "Product" },
@@ -22,7 +22,10 @@ const COLUMNS = [
 
   { key: "pending_to_ship", label: "Pending to ship" },
   { key: "pending_to_receive", label: "Pending to receive" },
-  { key: "google_drive_rma_case_total", label: "Google Drive RMA Case Total" },
+  {
+    key: "google_drive_rma_case_total",
+    label: "Google Drive RMA Case Total",
+  },
   { key: "comments", label: "Comments" },
 ];
 
@@ -40,38 +43,53 @@ const NUMERIC_KEYS = [
 
 export default function RmaRegionReports() {
   const [tab, setTab] = useState("emea"); // "emea" | "us"
-  const [loading, setLoading] = useState(false);
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
 
+  const [loading, setLoading] = useState(false);
   const [emeaRows, setEmeaRows] = useState([]);
   const [usRows, setUsRows] = useState([]);
 
   const reportRef = useRef(null);
 
-  // Load when tab changes
+  // Load when tab or month changes
   useEffect(() => {
     if (tab === "emea" && emeaRows.length === 0) {
-      loadRegion("emea");
+      loadRegion("emea", month);
     }
     if (tab === "us" && usRows.length === 0) {
-      loadRegion("us");
+      loadRegion("us", month);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  async function loadRegion(region) {
+  useEffect(() => {
+    // Whenever month changes, reload the current tab
+    loadRegion(tab, month);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [month]);
+
+  async function loadRegion(region, monthValue) {
+    if (!monthValue) return;
     setLoading(true);
     try {
+      const qs = new URLSearchParams({ month: monthValue });
       const res = await fetch(
-        apiUrl(`/rma/${region}/report`),
+        apiUrl(`/rma/${region}/stock?${qs.toString()}`),
         { credentials: "include" }
       );
       const data = await safeJson(res);
       const items = Array.isArray(data?.items) ? data.items : [];
 
-      if (region === "emea") setEmeaRows(items);
-      if (region === "us") setUsRows(items);
+      // Map stock rows -> report rows (per device)
+      const mapped = items.map((item) =>
+        mapStockItemToReportRow(region, item)
+      );
+
+      if (region === "emea") setEmeaRows(mapped);
+      if (region === "us") setUsRows(mapped);
 
       if (!res.ok) {
-        console.error(`${region.toUpperCase()} report fetch failed`, data);
+        console.error(`${region.toUpperCase()} stock fetch failed`, data);
       }
     } catch (err) {
       console.error("RMA region report error", err);
@@ -83,7 +101,10 @@ export default function RmaRegionReports() {
   }
 
   const rows = tab === "emea" ? emeaRows : usRows;
-  const title = tab === "emea" ? "EMEA RMA Report" : "US RMA Report";
+  const title =
+    tab === "emea"
+      ? `EMEA RMA Report — ${month}`
+      : `US RMA Report — ${month}`;
 
   const totals = computeTotals(rows);
 
@@ -98,7 +119,7 @@ export default function RmaRegionReports() {
     const pageHeight = (canvas.height * pageWidth) / canvas.width;
 
     pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
-    pdf.save(`${tab.toUpperCase()}_rma_report.pdf`);
+    pdf.save(`${tab.toUpperCase()}_rma_report_${month}.pdf`);
   }
 
   return (
@@ -113,15 +134,40 @@ export default function RmaRegionReports() {
         </TabButton>
       </div>
 
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <button
-          onClick={downloadPDF}
-          className="px-4 py-2 rounded bg-black text-white text-sm hover:bg-gray-800"
-          disabled={loading || rows.length === 0}
-        >
-          Download PDF
-        </button>
+      {/* Top bar: month + actions */}
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <div className="flex items-end gap-3">
+          <div>
+            <div className="text-xs font-medium mb-1">Month</div>
+            <input
+              type="month"
+              className="border rounded px-3 py-2"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            />
+          </div>
+          <div>
+            <div className="text-xs font-medium mb-1 invisible">Refresh</div>
+            <button
+              onClick={() => loadRegion(tab, month)}
+              className="px-3 py-2 border rounded text-xs hover:bg-gray-50"
+              disabled={loading}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <button
+            onClick={downloadPDF}
+            className="px-4 py-2 rounded bg-black text-white text-sm hover:bg-gray-800"
+            disabled={loading || rows.length === 0}
+          >
+            Download PDF
+          </button>
+        </div>
       </div>
 
       {/* Main table + legend wrapped for PDF capture */}
@@ -143,24 +189,33 @@ export default function RmaRegionReports() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="px-3 py-4 text-center">
+                  <td
+                    colSpan={COLUMNS.length}
+                    className="px-3 py-4 text-center"
+                  >
                     Loading…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="px-3 py-4 text-center">
+                  <td
+                    colSpan={COLUMNS.length}
+                    className="px-3 py-4 text-center"
+                  >
                     No data
                   </td>
                 </tr>
               ) : (
                 rows.map((row, idx) => (
                   <tr
-                    key={row.id || row.product || idx}
+                    key={row.id || `${row.product}-${idx}`}
                     className="border-t hover:bg-gray-50"
                   >
                     {COLUMNS.map((col) => (
-                      <td key={col.key} className="px-3 py-1.5 align-top">
+                      <td
+                        key={col.key}
+                        className="px-3 py-1.5 align-top whitespace-nowrap"
+                      >
                         {renderCell(row, col.key)}
                       </td>
                     ))}
@@ -189,32 +244,85 @@ export default function RmaRegionReports() {
         <div className="grid sm:grid-cols-2 gap-3 text-[11px] text-gray-700">
           <LegendItem
             label="Rush sent Out"
-            text="Units that were dispatched via Rush."
+            text="Units dispatched via Rush shipments."
           />
           <LegendItem
-            label="Actual RMA Return"
-            text="Units that were received, and replacement units have been sent out."
+            label="Actual RMA Cases"
+            text="Units that were received as RMA and replacement units have been sent out."
           />
           <LegendItem
             label="Receive Only D-Stock/B/A"
-            text="Units received, no further action required."
+            text="Units received for D/B/A stock with no further action required."
           />
           <LegendItem
             label="Pending to Ship"
-            text="Units that the Rush still needs to dispatch."
+            text="Units that Rush still needs to dispatch (open replacements)."
           />
           <LegendItem
             label="Pending to Receive"
-            text="Units that need to be sent by the customer or reseller."
+            text="Units that still need to be sent by the customer or reseller."
           />
           <LegendItem
             label="Google Drive RMA Case Total"
-            text="Total RMA requests, which are listed on the RMA sheet."
+            text="Total RMA requests recorded in the Google Sheet (manually maintained)."
           />
         </div>
       </div>
     </div>
   );
+}
+
+/* ───────────────── Mapping logic ───────────────── */
+
+/**
+ * Map one stock row from EMEA/US stock endpoints into
+ * the generic report row shape used by the table.
+ *
+ * This is where we “connect” RmaRegionReports to RmaStockEmea/RmaStockUs.
+ */
+function mapStockItemToReportRow(region, item) {
+  const isUS = region === "us";
+
+  // Common fields based on your stock pages
+  // EMEA fields:
+  //   device_name, d_stock_received, b_stock_received,
+  //   new_stock_sent, rma_bstock_rstock_sent,
+  //   awaiting_delivery_from_user, receiving_only,
+  //   awaiting_return_from_rush, notes
+  //
+  // US extra fields:
+  //   a_stock_received, receive_only
+  return {
+    id: item.id,
+    product: item.device_name || "",
+    description: "", // you can hook description here if you later add it
+    rush_sent_out: toNum(item.new_stock_sent),
+    actual_rma_cases: toNum(item.rma_bstock_rstock_sent),
+    d_stock_units_received: toNum(item.d_stock_received),
+
+    // Think of D/B/A stock here as “on hand” buckets.
+    d_stock: toNum(item.d_stock_received),
+    b_stock: toNum(item.b_stock_received),
+    a_stock: isUS ? toNum(item.a_stock_received) : 0,
+
+    // Pending to ship = waiting on Rush to send (awaiting_return_from_rush)
+    pending_to_ship: toNum(item.awaiting_return_from_rush),
+
+    // Pending to receive = waiting on customer (awaiting_delivery_from_user)
+    pending_to_receive: toNum(
+      item.awaiting_delivery_from_user || item.receive_only
+    ),
+
+    // Google drive cases are not in DB yet – keep 0 for now
+    google_drive_rma_case_total: 0,
+
+    comments: item.notes || "",
+  };
+}
+
+function toNum(v) {
+  const n = Number(v ?? 0);
+  return Number.isNaN(n) ? 0 : n;
 }
 
 /* ───────────────── UI helpers ───────────────── */
