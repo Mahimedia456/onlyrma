@@ -201,6 +201,23 @@ function RmaLists({ refreshKey }) {
   const [importMsg, setImportMsg] = useState("");
   const fileRef = useRef(null);
 
+  /* ---------------- REGION FIX: derive region from SKU if DB empty ---------------- */
+  function regionFromSku(code) {
+    if (!code) return "";
+    const c = code.toUpperCase().trim();
+
+    if (c.endsWith("-O")) return "US";
+    if (c.endsWith("-B-O")) return "US";
+    if (c.endsWith("-R-O")) return "US";
+
+    if (c.endsWith("-E")) return "EMEA";
+    if (c.endsWith("-B-E")) return "EMEA";
+    if (c.endsWith("-R-E")) return "EMEA";
+
+    // base SKU — default rule
+    return "EMEA";
+  }
+
   // fetch list (server still only uses month + category)
   useEffect(() => {
     (async () => {
@@ -225,7 +242,7 @@ function RmaLists({ refreshKey }) {
     })();
   }, [API, filters.month, filters.category, refreshKey]);
 
-  // group for month tiles
+  // group by month
   const grouped = useMemo(() => {
     const m = new Map();
     for (const r of rows) {
@@ -240,7 +257,7 @@ function RmaLists({ refreshKey }) {
     return m;
   }, [rows]);
 
-  // year dropdown (from entry_date)
+  // year dropdown
   const yearOptions = useMemo(() => {
     const ys = new Set();
     rows.forEach((r) => {
@@ -315,11 +332,9 @@ function RmaLists({ refreshKey }) {
     a.remove();
   }
 
-  /* ---------- TEMPLATE DOWNLOAD (server first, then client fallback) ---------- */
+  /* ---------- TEMPLATE CSV (server → fallback) ---------- */
   async function downloadTemplate() {
     const url = apiUrl(`/rma/entries/template.csv`);
-
-    // Try server CSV
     try {
       const res = await fetch(url, { credentials: "include" });
       if (
@@ -337,7 +352,6 @@ function RmaLists({ refreshKey }) {
       }
     } catch {}
 
-    // Fallback: generate template with your exact headers
     const headers = Object.keys(HUMAN_TO_CANON);
     const blob = new Blob(
       ["\uFEFF" + headers.join(",") + "\n"],
@@ -351,7 +365,7 @@ function RmaLists({ refreshKey }) {
     a.remove();
   }
 
-  /* ---------- IMPORT (CSV with your headers) ---------- */
+  /* ---------- IMPORT CSV ---------- */
   function openImportDialog() {
     setImportMsg("");
     fileRef.current?.click();
@@ -359,7 +373,7 @@ function RmaLists({ refreshKey }) {
 
   async function handleImportFile(e) {
     const f = e.target.files?.[0];
-    e.target.value = ""; // allow picking same file twice
+    e.target.value = "";
     if (!f) return;
 
     try {
@@ -374,9 +388,7 @@ function RmaLists({ refreshKey }) {
         return;
       }
 
-      // Build mapping from YOUR headers -> canonical DB keys
-      const h2c = HUMAN_TO_CANON; // exact header strings
-      // quick index header -> position
+      const h2c = HUMAN_TO_CANON;
       const idx = new Map(
         headers.map((h, i) => [h.trim(), i])
       );
@@ -392,7 +404,6 @@ function RmaLists({ refreshKey }) {
         for (const [human, canon] of Object.entries(h2c)) {
           obj[canon] = get(rowArr, human);
         }
-        // Transform/normalize (date, quantity, etc.)
         obj.entry_date = fmtDate(obj.entry_date) || null;
         const q = Number(obj.quantity || 0);
         obj.quantity =
@@ -400,7 +411,6 @@ function RmaLists({ refreshKey }) {
         return obj;
       });
 
-      // send as JSON { items: [...] } — matches server route
       setImportMsg(`Uploading ${items.length} row(s)…`);
       const res = await fetch(`${API}/api/rma/entries/import`, {
         method: "POST",
@@ -410,6 +420,7 @@ function RmaLists({ refreshKey }) {
         credentials: "include",
         body: JSON.stringify({ items }),
       });
+
       const data = await safeJson(res);
 
       if (res.status === 207) {
@@ -427,7 +438,7 @@ function RmaLists({ refreshKey }) {
         );
       }
 
-      // Refresh table (respect server filters month/category)
+      // reload list
       setLoading(true);
       try {
         const qs = new URLSearchParams({
@@ -519,14 +530,12 @@ function RmaLists({ refreshKey }) {
       return;
     }
 
-    // Update UI
     const after = { ...before, ...toSend };
     setRows((prev) =>
       prev.map((r) => (r.id === id ? after : r))
     );
     setEditRow(null);
 
-    // If viewer -> email diff
     if (role === "viewer") {
       const changed = {};
       const keys = new Set([
@@ -543,7 +552,6 @@ function RmaLists({ refreshKey }) {
           };
         }
       }
-      // If something changed, notify
       if (Object.keys(changed).length > 0) {
         try {
           await fetch("/api/notify-update", {
@@ -565,11 +573,11 @@ function RmaLists({ refreshKey }) {
     }
   }
 
-  // client-side filtering (Rush style)
+  /* ---------- CLIENT SIDE FILTERING ---------- */
   const filteredRows = useMemo(() => {
     let list = rows;
 
-    // search in multiple columns
+    // search
     if (filters.search.trim()) {
       const q = filters.search.toLowerCase();
       list = list.filter((r) =>
@@ -596,30 +604,35 @@ function RmaLists({ refreshKey }) {
       );
     }
 
-    // category (extra safety even though server uses it)
+    // category
     if (filters.category) {
       list = list.filter(
         (r) => r.category === filters.category
       );
     }
 
-    // organization (region)
+    // organization
     if (filters.organization) {
-      list = list.filter(
-        (r) =>
-          (r.organization || "").toUpperCase() ===
+      list = list.filter((r) => {
+        const org =
+          r.organization ||
+          regionFromSku(r.product_sku) ||
+          "";
+        return (
+          org.toUpperCase() ===
           filters.organization.toUpperCase()
-      );
+        );
+      });
     }
 
-    // stock_type filter
+    // stock type
     if (filters.stock_type) {
       list = list.filter(
         (r) => r.stock_type === filters.stock_type
       );
     }
 
-    // year filter (entry_date)
+    // year
     if (filters.year) {
       const yNum = Number(filters.year);
       list = list.filter(
@@ -627,7 +640,7 @@ function RmaLists({ refreshKey }) {
       );
     }
 
-    // month range (entry_date)
+    // month range
     if (filters.fromMonth || filters.toMonth) {
       list = list.filter((r) => {
         const key = getMonthKey(r.entry_date);
@@ -640,7 +653,7 @@ function RmaLists({ refreshKey }) {
       });
     }
 
-    // date range (entry_date)
+    // date range
     if (filters.fromDate || filters.toDate) {
       list = list.filter((r) => {
         const d = normalizeDate(r.entry_date);
@@ -656,7 +669,7 @@ function RmaLists({ refreshKey }) {
     return list;
   }, [rows, filters]);
 
-  // pagination derived from filteredRows
+  // pagination
   const total = filteredRows.length;
   const totalPages = Math.max(
     1,
@@ -672,7 +685,6 @@ function RmaLists({ refreshKey }) {
     startIndex + pageSize
   );
 
-  // reset page + selection when filters / pageSize change
   useEffect(() => {
     setPage(1);
     setSelectedIds([]);
@@ -723,13 +735,11 @@ function RmaLists({ refreshKey }) {
 
   function toggleSelectAllCurrentPage() {
     if (allPageSelected) {
-      // unselect all on this page
       const idsOnPage = new Set(pageRows.map((r) => r.id));
       setSelectedIds((prev) =>
         prev.filter((id) => !idsOnPage.has(id))
       );
     } else {
-      // add all on this page
       setSelectedIds((prev) => {
         const s = new Set(prev);
         pageRows.forEach((r) => s.add(r.id));
@@ -740,8 +750,9 @@ function RmaLists({ refreshKey }) {
 
   return (
     <div className="space-y-4">
-      {/* Filters / actions */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
+
         {/* Search */}
         <div>
           <label className="block text-xs mb-1">
@@ -760,7 +771,7 @@ function RmaLists({ refreshKey }) {
           />
         </div>
 
-        {/* Month (server + client) */}
+        {/* Month */}
         <div>
           <label className="block text-xs mb-1">
             Month (Entry Date)
@@ -874,7 +885,7 @@ function RmaLists({ refreshKey }) {
           />
         </div>
 
-        {/* RMA Category */}
+        {/* Category */}
         <div>
           <label className="block text-xs mb-1">
             RMA Category
@@ -898,7 +909,7 @@ function RmaLists({ refreshKey }) {
           </select>
         </div>
 
-        {/* Stock Type filter */}
+        {/* Stock Type */}
         <div>
           <label className="block text-xs mb-1">
             Stock Type
@@ -922,7 +933,7 @@ function RmaLists({ refreshKey }) {
           </select>
         </div>
 
-        {/* Region / Organization filter */}
+        {/* Organization (Region) */}
         <div>
           <label className="block text-xs mb-1">
             Region / Organization
@@ -946,7 +957,7 @@ function RmaLists({ refreshKey }) {
           </select>
         </div>
 
-        {/* Right side actions */}
+        {/* Actions */}
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={clearFilters}
@@ -978,7 +989,6 @@ function RmaLists({ refreshKey }) {
                 onClick={openImportDialog}
                 className="rounded border px-4 py-2 hover:bg-gray-50 disabled:opacity-60"
                 disabled={loading || importing}
-                title="Import RMA entries from a CSV file"
               >
                 {importing ? "Importing…" : "Import CSV"}
               </button>
@@ -992,11 +1002,10 @@ function RmaLists({ refreshKey }) {
 
               <button
                 onClick={deleteSelected}
-                className="rounded border px-4 py-2 hover:bg-red-50 disabled:opacity-60 text-red-700"
+                className="rounded border px-4 py-2 hover:bg-red-50 text-red-700 disabled:opacity-60"
                 disabled={
                   loading || importing || !selectedIds.length
                 }
-                title="Delete all selected RMA entries"
               >
                 Delete Selected
               </button>
@@ -1087,7 +1096,7 @@ function RmaLists({ refreshKey }) {
               <Th>Action</Th>
               <Th>Customer Return Tracking</Th>
               <Th>New Order #</Th>
-              <Th>Region</Th>
+              <Th>Region</Th> {/* ← FIXED */}
               <Th>Actions</Th>
             </tr>
           </thead>
@@ -1165,9 +1174,14 @@ function RmaLists({ refreshKey }) {
                   <Td>
                     {r.replacement_tracking || "-"}
                   </Td>
+
+                  {/* ★ REGION FIX: show organization OR derive from SKU */}
                   <Td>
-                    {r.organization || "-"}
+                    {r.organization ||
+                      regionFromSku(r.product_sku) ||
+                      "-"}
                   </Td>
+
                   <Td>
                     <div className="flex gap-3">
                       <button
@@ -1248,6 +1262,7 @@ function RmaLists({ refreshKey }) {
         </div>
       </div>
 
+      {/* Edit Modal */}
       {editRow && (
         <EditModal
           initial={editRow}

@@ -1,7 +1,7 @@
 [
   {
-    "id": "rma_1763382353601_0q2hm0",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_82hzsi",
+    "entry_date": "2025-10-01",
     "ticket_id": "221808",
     "first_name": "João Francisco",
     "last_name": "Costa",
@@ -17,7 +17,7 @@
     "postcode": "2790-049",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O8A9SHB252A33",
-    "product_sku": "ATOMSHB003-R",
+    "product_sku": "ATOMSHB003-R-E",
     "device_name": "Shinobi II",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -29,12 +29,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_66uj2j",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_iump61",
+    "entry_date": "2025-10-01",
     "ticket_id": "222174",
     "first_name": "David",
     "last_name": "Adin",
@@ -62,12 +62,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_tltgqe",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_w6v4m7",
+    "entry_date": "2025-10-01",
     "ticket_id": "222035",
     "first_name": "Vadym",
     "last_name": "Zhurba",
@@ -83,7 +83,7 @@
     "postcode": "266 01",
     "product_with_fault": "ATOMCON003",
     "serial_number": "K1A9ATCN57H88",
-    "product_sku": "ATOMCON003",
+    "product_sku": "ATOMCON003-E",
     "device_name": "Atomos Connect",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -95,12 +95,12 @@
     "replacement_tracking": "5.2121E+12",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_iipy9g",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_avo35f",
+    "entry_date": "2025-10-06",
     "ticket_id": "222430",
     "first_name": "Marco",
     "last_name": "Boiani",
@@ -116,7 +116,7 @@
     "postcode": "47833",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O1A9SHB250B26",
-    "product_sku": "ATOMSHB003-R",
+    "product_sku": "ATOMSHB003-R-E",
     "device_name": "Shinobi II",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -128,12 +128,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_cuker6",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_8auwd4",
+    "entry_date": "2025-10-08",
     "ticket_id": "220280",
     "first_name": "Paul",
     "last_name": "Hanke",
@@ -149,7 +149,7 @@
     "postcode": "4810",
     "product_with_fault": "ATOMSYBL1 (US)",
     "serial_number": "N/A",
-    "product_sku": "ATOMSYBL1 (US)",
+    "product_sku": "ATOMSYBL1 (US)-E",
     "device_name": "UltraSync Blue",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -161,12 +161,12 @@
     "replacement_tracking": "5.2121E+12",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_mok9os",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_20wcng",
+    "entry_date": "2025-10-08",
     "ticket_id": "217955",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -194,12 +194,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_a92ufl",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_4qmu1c",
+    "entry_date": "2025-10-08",
     "ticket_id": "219499",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -227,12 +227,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_o4835r",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_pwcoyq",
+    "entry_date": "2025-10-08",
     "ticket_id": "213487",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -260,12 +260,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_qkcmss",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_vtmw3s",
+    "entry_date": "2025-10-08",
     "ticket_id": "212816",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -293,12 +293,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_rr6yww",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_p4gnns",
+    "entry_date": "2025-10-08",
     "ticket_id": "208330",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -326,12 +326,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_5ez3vi",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ib7mr4",
+    "entry_date": "2025-10-08",
     "ticket_id": "21265",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -359,12 +359,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_9z4725",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_v0rh6s",
+    "entry_date": "2025-10-08",
     "ticket_id": "207200",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -392,12 +392,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_ve1wdo",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_3t5hj8",
+    "entry_date": "2025-10-08",
     "ticket_id": "208128",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -425,12 +425,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_5vmgo9",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_r08952",
+    "entry_date": "2025-10-08",
     "ticket_id": "207427",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -458,12 +458,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_24dpfy",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_1l0kay",
+    "entry_date": "2025-10-08",
     "ticket_id": "212286",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -491,12 +491,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_hakmay",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_gt60xr",
+    "entry_date": "2025-10-08",
     "ticket_id": "212286",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -524,12 +524,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_1e4tkb",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_e5xx0k",
+    "entry_date": "2025-10-08",
     "ticket_id": "220583",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -557,12 +557,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_021wpt",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ryfjp3",
+    "entry_date": "2025-10-08",
     "ticket_id": "220632",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -590,12 +590,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_ilbqhe",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_dixsx9",
+    "entry_date": "2025-10-08",
     "ticket_id": "222114",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -623,12 +623,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_erit4j",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_b0w6xl",
+    "entry_date": "2025-10-10",
     "ticket_id": "222612",
     "first_name": "Teemu",
     "last_name": "Salminen",
@@ -644,7 +644,7 @@
     "postcode": "2630",
     "product_with_fault": "ATOMNJA004",
     "serial_number": "K1A9NJ0152C54",
-    "product_sku": " ATOMNJA004-R",
+    "product_sku": " ATOMNJA004-R-E",
     "device_name": "Ninja ",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -656,12 +656,12 @@
     "replacement_tracking": "5.2121E+12",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_frhd0z",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ornoa9",
+    "entry_date": "2025-10-13",
     "ticket_id": "222429",
     "first_name": "Victor",
     "last_name": "Pilely Johansson",
@@ -677,7 +677,7 @@
     "postcode": "2200",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O7A9SHB254F21",
-    "product_sku": "ATOMSHB003 -R",
+    "product_sku": "ATOMSHB003 -R-E",
     "device_name": "Shinobi II",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -689,12 +689,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_lgo9c8",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_4bjnc2",
+    "entry_date": "2025-10-17",
     "ticket_id": "222914",
     "first_name": "Telmo",
     "last_name": "Domingues",
@@ -710,7 +710,7 @@
     "postcode": "2685-066",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O7A9SHB252A48",
-    "product_sku": "ATOMSHB003 -R",
+    "product_sku": "ATOMSHB003 -R-E",
     "device_name": "Shinobi II",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -722,12 +722,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_cp1h7j",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_1xc7je",
+    "entry_date": "2025-10-20",
     "ticket_id": "223058",
     "first_name": "William",
     "last_name": "Turner",
@@ -743,7 +743,7 @@
     "postcode": "PO37 6BE",
     "product_with_fault": "ATOMNJPB01",
     "serial_number": "N/A",
-    "product_sku": "ATOMNJPB01",
+    "product_sku": "ATOMNJPB01-E",
     "device_name": "Ninja Phone",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -755,12 +755,12 @@
     "replacement_tracking": "5846922734",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_n4oifl",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ngr1je",
+    "entry_date": "2025-10-21",
     "ticket_id": "223138",
     "first_name": "Sergio",
     "last_name": "Milani",
@@ -776,7 +776,7 @@
     "postcode": "10070",
     "product_with_fault": "ATOMXCST01",
     "serial_number": "K2A9NJCT51A65",
-    "product_sku": "ATOMXCST01-B",
+    "product_sku": "ATOMXCST01-B-E",
     "device_name": "AtomX Cast",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -788,12 +788,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_vyrtc8",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_rashnm",
+    "entry_date": "2025-10-21",
     "ticket_id": "223208",
     "first_name": "TEMIS",
     "last_name": "TRUJILLO CORDOBILLA",
@@ -821,12 +821,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_kylkds",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_yjblig",
+    "entry_date": "2025-10-22",
     "ticket_id": "223286",
     "first_name": "Ruben",
     "last_name": "Best",
@@ -842,7 +842,7 @@
     "postcode": "22085",
     "product_with_fault": "ATOMNJA004",
     "serial_number": "K129NJ0150C97",
-    "product_sku": " ATOMNJA004-R",
+    "product_sku": " ATOMNJA004-R-E",
     "device_name": "Ninja",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -854,12 +854,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_ca73sq",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_i4mu48",
+    "entry_date": "2025-10-22",
     "ticket_id": "223320",
     "first_name": "Julian",
     "last_name": "Müller",
@@ -875,7 +875,7 @@
     "postcode": "42657",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O9A9SHB251B23",
-    "product_sku": "ATOMSHB003 -R",
+    "product_sku": "ATOMSHB003 -R-E",
     "device_name": "Shinobi II",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -887,12 +887,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_9ap5c6",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_y9otmh",
+    "entry_date": "2025-10-22",
     "ticket_id": "221261",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -920,12 +920,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_efgge8",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_wl87gg",
+    "entry_date": "2025-10-22",
     "ticket_id": "221263",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -953,12 +953,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_k275e2",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_301fxc",
+    "entry_date": "2025-10-22",
     "ticket_id": "221516",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -986,12 +986,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_ycsn2x",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_78otep",
+    "entry_date": "2025-10-22",
     "ticket_id": "221518",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -1019,12 +1019,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_2mwhsx",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ix3tpu",
+    "entry_date": "2025-10-22",
     "ticket_id": "221709",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -1052,12 +1052,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_etrhj2",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_cg2g50",
+    "entry_date": "2025-10-22",
     "ticket_id": "221845",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -1085,12 +1085,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_7jtfzg",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_mpipah",
+    "entry_date": "2025-10-22",
     "ticket_id": "221849",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -1118,12 +1118,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_ml7e2y",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_wjygi8",
+    "entry_date": "2025-10-22",
     "ticket_id": "221858",
     "first_name": "Lewis",
     "last_name": "Perkins",
@@ -1151,12 +1151,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_s4ah5q",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_7i41bj",
+    "entry_date": "2025-10-23",
     "ticket_id": "223217",
     "first_name": "Lorenzo",
     "last_name": "Vannucci",
@@ -1172,7 +1172,7 @@
     "postcode": "51100",
     "product_with_fault": "ATOMSUMSE1-B",
     "serial_number": "K179S9SE50A19",
-    "product_sku": "ATOMSUMSE1-B",
+    "product_sku": "ATOMSUMSE1-B-E",
     "device_name": "Sumo 19SE",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -1184,12 +1184,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_qy2n5i",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_skldqs",
+    "entry_date": "2025-10-23",
     "ticket_id": "223282",
     "first_name": "Nikola",
     "last_name": "Janušić",
@@ -1205,7 +1205,7 @@
     "postcode": "1261",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O4A9SHB250D55",
-    "product_sku": "ATOMSHB003-B",
+    "product_sku": "ATOMSHB003-B-E",
     "device_name": "Shinobi II",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -1217,12 +1217,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_0keobs",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_mqnnq9",
+    "entry_date": "2025-10-24",
     "ticket_id": "221169",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -1250,12 +1250,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_o8vwxw",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ieujvw",
+    "entry_date": "2025-10-27",
     "ticket_id": "223093",
     "first_name": "Juergen",
     "last_name": "Jeibmann",
@@ -1283,12 +1283,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_zzucn0",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_en2got",
+    "entry_date": "2025-10-27",
     "ticket_id": "223381",
     "first_name": "Nikos",
     "last_name": "Tsaldaris",
@@ -1304,7 +1304,7 @@
     "postcode": "55535",
     "product_with_fault": "ATOMNJA004",
     "serial_number": "K9A9NJ0150C36",
-    "product_sku": "ATOMNJA004-R",
+    "product_sku": "ATOMNJA004-R-O",
     "device_name": "Ninja",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -1316,12 +1316,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_4josrb",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_lo3f6b",
+    "entry_date": "2025-10-28",
     "ticket_id": "223559",
     "first_name": "Adrien",
     "last_name": "Aflalo",
@@ -1337,7 +1337,7 @@
     "postcode": "75011",
     "product_with_fault": "ATOMSYBL1 (ROW)",
     "serial_number": "K1A94USB50C39",
-    "product_sku": "ATOMSYBL1 (US)",
+    "product_sku": "ATOMSYBL1 (US)-O",
     "device_name": "UltraSync Blue",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -1349,12 +1349,12 @@
     "replacement_tracking": "5.2121E+12",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_a1vgha",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ruwkex",
+    "entry_date": "2025-10-30",
     "ticket_id": "222526",
     "first_name": "Tom",
     "last_name": "Stephens",
@@ -1370,7 +1370,7 @@
     "postcode": " BS4 4PR",
     "product_with_fault": "N/A",
     "serial_number": "N/A",
-    "product_sku": "ATOM4K60C6",
+    "product_sku": "ATOM4K60C6-E",
     "device_name": "AtomFlex HDMI",
     "rma_type": "Regular",
     "stock_type": "D-Stock",
@@ -1382,12 +1382,12 @@
     "replacement_tracking": "1225524241",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_zt8tn9",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_nefksx",
+    "entry_date": "2025-10-31",
     "ticket_id": "222356",
     "first_name": "BILAL",
     "last_name": "HUSSAIN",
@@ -1415,12 +1415,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_79ay9h",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_rg52bj",
+    "entry_date": "2025-10-01",
     "ticket_id": "222231",
     "first_name": "Ellie",
     "last_name": "White",
@@ -1448,12 +1448,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_dwsxz5",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_c6d40c",
+    "entry_date": "2025-10-02",
     "ticket_id": "222378",
     "first_name": "Adam",
     "last_name": "Pennycuff",
@@ -1469,7 +1469,7 @@
     "postcode": "93727",
     "product_with_fault": "ATOMSHGU01",
     "serial_number": "03A9SHOU50B50",
-    "product_sku": "ATOMSHGU01",
+    "product_sku": "ATOMSHGU01-O",
     "device_name": "Shogun Ultra",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1481,12 +1481,12 @@
     "replacement_tracking": "1ZE408H20321655346",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_wclx32",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_9ghovg",
+    "entry_date": "2025-10-02",
     "ticket_id": "222249",
     "first_name": "Eugene ",
     "last_name": "Antipov",
@@ -1502,7 +1502,7 @@
     "postcode": "32583",
     "product_with_fault": "ATOMNJA004",
     "serial_number": "K6A9NJ0150I06",
-    "product_sku": "ATOMNJA004-R",
+    "product_sku": "ATOMNJA004-O",
     "device_name": "Ninja",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1514,12 +1514,12 @@
     "replacement_tracking": "1ZE408H20335864040",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_tkql85",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ahtxrf",
+    "entry_date": "2025-10-02",
     "ticket_id": "222377",
     "first_name": "Thomas",
     "last_name": "Gill",
@@ -1547,12 +1547,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353601_quuw6x",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_gj0ina",
+    "entry_date": "2025-10-03",
     "ticket_id": "222305",
     "first_name": "Sheri ",
     "last_name": "Brenner",
@@ -1568,7 +1568,7 @@
     "postcode": "94117",
     "product_with_fault": "ATOMSHB002",
     "serial_number": "09A9SHB750I17",
-    "product_sku": "ATOMSHB002-R",
+    "product_sku": "ATOMSHB002-R-O",
     "device_name": "Shinobi 7",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1580,12 +1580,12 @@
     "replacement_tracking": "1ZE408H20334078320.",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_109e35",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_c4y2s2",
+    "entry_date": "2025-10-06",
     "ticket_id": "222417",
     "first_name": "Marissa",
     "last_name": "Gallant",
@@ -1613,12 +1613,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_qmqxfl",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_s2rm1m",
+    "entry_date": "2025-10-07",
     "ticket_id": "222483",
     "first_name": "Art ",
     "last_name": "Aquino",
@@ -1646,12 +1646,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_xetngx",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_696o3v",
+    "entry_date": "2025-10-08",
     "ticket_id": "222651",
     "first_name": "Brit",
     "last_name": "Arnett",
@@ -1679,12 +1679,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_f1brpu",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_dlxene",
+    "entry_date": "2025-10-09",
     "ticket_id": "222647",
     "first_name": "Judy",
     "last_name": "Fontes",
@@ -1700,7 +1700,7 @@
     "postcode": "46818",
     "product_with_fault": "ATOMNJA004",
     "serial_number": "K119NJ0150I77 & K109NJ0150B58",
-    "product_sku": "ATOMNJA004",
+    "product_sku": "ATOMNJA004-O",
     "device_name": "Ninja",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1712,12 +1712,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_xt76b2",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_9m150e",
+    "entry_date": "2025-10-09",
     "ticket_id": "222685",
     "first_name": "Joshua",
     "last_name": "Martin",
@@ -1733,7 +1733,7 @@
     "postcode": "18017",
     "product_with_fault": "ATOMSHGU01",
     "serial_number": "O3A9SHOU51D65",
-    "product_sku": "ATOMSHGU01",
+    "product_sku": "ATOMSHGU01-O",
     "device_name": "Shogun Ultra",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1745,12 +1745,12 @@
     "replacement_tracking": "(Ref 20252410067ATO209503)",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_fa9g4k",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_4zv5bi",
+    "entry_date": "2025-10-09",
     "ticket_id": "221289",
     "first_name": "Kyle",
     "last_name": "Spriggs",
@@ -1766,7 +1766,7 @@
     "postcode": "77003",
     "product_with_fault": "ATOMNJAU01 & ATOMCON003",
     "serial_number": "K8A9NJ0250B63",
-    "product_sku": "ATOMNJAU01 & ATOMCON003",
+    "product_sku": "ATOMNJAU01-O & ATOMCON003-O",
     "device_name": "Ninja Ultra & Atomos Connect",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1778,12 +1778,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_yusmni",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_lr2ug3",
+    "entry_date": "2025-10-13",
     "ticket_id": "222179",
     "first_name": "Mac",
     "last_name": "Choudhry",
@@ -1811,12 +1811,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_xyaaqe",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_z3g59o",
+    "entry_date": "2025-10-13",
     "ticket_id": "222916",
     "first_name": "Cesar",
     "last_name": "Capitol",
@@ -1844,12 +1844,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_bs0ogt",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_oa0r55",
+    "entry_date": "2025-10-14",
     "ticket_id": "222790",
     "first_name": "Justin",
     "last_name": "Hickox",
@@ -1865,7 +1865,7 @@
     "postcode": "97756",
     "product_with_fault": "ATOMNJAU01",
     "serial_number": "K8A9NJ0250C70",
-    "product_sku": "ATOMSHGU01",
+    "product_sku": "ATOMSHGU01-O",
     "device_name": "Ninja Ultra",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1877,12 +1877,12 @@
     "replacement_tracking": "1ZE408H20308789183.",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_ckw3su",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_czw4ql",
+    "entry_date": "2025-10-15",
     "ticket_id": "222931",
     "first_name": "Kenneth",
     "last_name": "Meyering",
@@ -1910,12 +1910,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_7x6ppd",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_7h0ldt",
+    "entry_date": "2025-10-15",
     "ticket_id": "222930",
     "first_name": "Lewis",
     "last_name": "Frazier",
@@ -1943,12 +1943,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_q2502n",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_yq2psm",
+    "entry_date": "2025-10-16",
     "ticket_id": "222579",
     "first_name": "Brianna",
     "last_name": "Dutko",
@@ -1964,7 +1964,7 @@
     "postcode": "7801",
     "product_with_fault": "ATOMCAB011",
     "serial_number": "NA",
-    "product_sku": "ATOMCAB011",
+    "product_sku": "ATOMCAB011-O",
     "device_name": "AtomFlex Cable",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -1976,12 +1976,12 @@
     "replacement_tracking": "shipped 1ZE408H20323962322",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_whoxup",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_lph8kv",
+    "entry_date": "2025-10-16",
     "ticket_id": "222368",
     "first_name": "Robert",
     "last_name": "Wilmes",
@@ -1997,7 +1997,7 @@
     "postcode": "68116",
     "product_with_fault": "NA",
     "serial_number": "Send Direct replacement",
-    "product_sku": "ATOMANT001",
+    "product_sku": "ATOMANT001-O",
     "device_name": "Atomos Antenna Set",
     "rma_type": "DTC",
     "stock_type": "NA",
@@ -2009,12 +2009,12 @@
     "replacement_tracking": "1ZE408H20331771997",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353602_y3popv",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_skr0on",
+    "entry_date": "2025-10-17",
     "ticket_id": "221553",
     "first_name": "John",
     "last_name": "Manidis",
@@ -2030,7 +2030,7 @@
     "postcode": "80111",
     "product_with_fault": "ATOMCON003",
     "serial_number": "K1A9ATCN58E85",
-    "product_sku": "ATOMCON003",
+    "product_sku": "ATOMCON003-O",
     "device_name": "Atomos Connect",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2042,12 +2042,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_ggtrml",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_2hx2hj",
+    "entry_date": "2025-10-17",
     "ticket_id": "223181",
     "first_name": "Eric",
     "last_name": "Conner",
@@ -2063,7 +2063,7 @@
     "postcode": "20036",
     "product_with_fault": "ATOMSHG002",
     "serial_number": "O1A9SH0150A73",
-    "product_sku": "ATOMSHGU01-B",
+    "product_sku": "ATOMSHGU01-B-O",
     "device_name": "Shogun",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2075,12 +2075,12 @@
     "replacement_tracking": "1ZE408H20323828370",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_xzl98z",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_z5gekv",
+    "entry_date": "2025-10-17",
     "ticket_id": "223127",
     "first_name": "Christian",
     "last_name": "Sotomayor",
@@ -2108,12 +2108,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_xfvptu",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_dn57fd",
+    "entry_date": "2025-10-20",
     "ticket_id": "222870",
     "first_name": "Lu",
     "last_name": "Mendoza",
@@ -2141,12 +2141,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_l1za2g",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_9u7kqc",
+    "entry_date": "2025-10-20",
     "ticket_id": "223156",
     "first_name": "Partha",
     "last_name": "Roy",
@@ -2162,7 +2162,7 @@
     "postcode": "77384",
     "product_with_fault": "ATOMBAT003 ",
     "serial_number": "Send Direct replacement",
-    "product_sku": "ATOMBAT003 ",
+    "product_sku": "ATOMBAT003-O",
     "device_name": "AtomX Battery",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -2174,12 +2174,12 @@
     "replacement_tracking": "1ZE408H20335787955",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_toqqy1",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_8cj3x3",
+    "entry_date": "2025-10-20",
     "ticket_id": "223150",
     "first_name": "John",
     "last_name": "Zajeski",
@@ -2195,7 +2195,7 @@
     "postcode": "60612",
     "product_with_fault": "ATOMSHGCO1",
     "serial_number": "O1A9SHCN52H95",
-    "product_sku": "ATOMSHGU01-B",
+    "product_sku": "ATOMSHGU01-B-O",
     "device_name": "Shogun Connect",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2207,12 +2207,12 @@
     "replacement_tracking": "1ZE408H20332669927",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_31uvui",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_k941jt",
+    "entry_date": "2025-10-20",
     "ticket_id": "222505",
     "first_name": "Herman",
     "last_name": "Page",
@@ -2240,12 +2240,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_us9olz",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_xwk2e6",
+    "entry_date": "2025-10-21",
     "ticket_id": "223281",
     "first_name": "Samuel",
     "last_name": "Hernandez",
@@ -2273,12 +2273,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_8minok",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ga9sl2",
+    "entry_date": "2025-10-22",
     "ticket_id": "223330",
     "first_name": "Andrew",
     "last_name": "Clark",
@@ -2294,7 +2294,7 @@
     "postcode": "30024-3395",
     "product_with_fault": "ATOMSHGU01",
     "serial_number": "O2A9SHOU51E24",
-    "product_sku": "ATOMSHGU01-B",
+    "product_sku": "ATOMSHGU01-B-O",
     "device_name": "Shogun Ultra",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2306,12 +2306,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_gds47q",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_wbsufw",
+    "entry_date": "2025-10-22",
     "ticket_id": "222224",
     "first_name": "Phil",
     "last_name": "Greene",
@@ -2327,7 +2327,7 @@
     "postcode": "30318",
     "product_with_fault": "ATOMSHGCO1",
     "serial_number": "O01A9SHCN50J68",
-    "product_sku": "ATOMSHGU01-B",
+    "product_sku": "ATOMSHGU01-B-O",
     "device_name": "Shogun Connect",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2339,12 +2339,12 @@
     "replacement_tracking": "1ZE408H20337508314",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_2kfpzl",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_9yyzok",
+    "entry_date": "2025-10-22",
     "ticket_id": "221479",
     "first_name": "Saeid",
     "last_name": "Mobarak",
@@ -2360,7 +2360,7 @@
     "postcode": "92555",
     "product_with_fault": "ATOMCON003",
     "serial_number": "K1A9ATCN52F68",
-    "product_sku": "ATOMCON003",
+    "product_sku": "ATOMCON003-O",
     "device_name": "Atomos Connect",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2372,12 +2372,12 @@
     "replacement_tracking": "1ZE408H20329257379",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_vse7wb",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_9njel6",
+    "entry_date": "2025-10-22",
     "ticket_id": "223348",
     "first_name": "francisco",
     "last_name": "Sanchez",
@@ -2393,7 +2393,7 @@
     "postcode": "33625",
     "product_with_fault": "ATOMNJAV01",
     "serial_number": "D1894njv51i49",
-    "product_sku": "ATOMNJA004-R",
+    "product_sku": "ATOMNJA004-R-O",
     "device_name": "Ninja V",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2405,12 +2405,12 @@
     "replacement_tracking": "1ZE408H20333084717",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_tijs6n",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_10orty",
+    "entry_date": "2025-10-23",
     "ticket_id": "223331",
     "first_name": "Paul ",
     "last_name": "Tortora",
@@ -2426,7 +2426,7 @@
     "postcode": "6437",
     "product_with_fault": "ATOMNJTX01",
     "serial_number": "K1A9NJT11511116",
-    "product_sku": "ATOMNJTX01",
+    "product_sku": "ATOMNJTX01-O",
     "device_name": "Ninja TX",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -2438,12 +2438,12 @@
     "replacement_tracking": "1ZE408H20339694744",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_8siovi",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_jz8aoh",
+    "entry_date": "2025-10-23",
     "ticket_id": "223440",
     "first_name": "Kaden",
     "last_name": "Walker",
@@ -2459,7 +2459,7 @@
     "postcode": "30312",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O5A9SHB251D08",
-    "product_sku": "ATOMSHB003-R",
+    "product_sku": "ATOMSHB003-R-O",
     "device_name": "Shinobi II",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2471,12 +2471,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_gaxdg7",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_9lcek6",
+    "entry_date": "2025-10-24",
     "ticket_id": "223228",
     "first_name": "Cody",
     "last_name": "Womles",
@@ -2504,12 +2504,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_cihspt",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_6gl0cs",
+    "entry_date": "2025-10-24",
     "ticket_id": "223416",
     "first_name": "TJ",
     "last_name": "Johnson",
@@ -2525,7 +2525,7 @@
     "postcode": "91780",
     "product_with_fault": "ATOMDTPCB2",
     "serial_number": "Send Direct replacement",
-    "product_sku": "ATOMDTPCB2",
+    "product_sku": "ATOMDTPCB2-O",
     "device_name": "D-Tap to DC ",
     "rma_type": "DTC",
     "stock_type": "D-Stock",
@@ -2537,12 +2537,12 @@
     "replacement_tracking": "1ZE408H20306718959",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_iejf6o",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_jsl9e5",
+    "entry_date": "2025-10-24",
     "ticket_id": "223062",
     "first_name": "Eric",
     "last_name": "Albertie",
@@ -2570,12 +2570,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_ad8d2v",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_mczeik",
+    "entry_date": "2025-10-27",
     "ticket_id": "223642",
     "first_name": "JESSICA ",
     "last_name": "ORDONEZ",
@@ -2591,7 +2591,7 @@
     "postcode": "37416",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O149SHB250B85",
-    "product_sku": "ATOMSHB003",
+    "product_sku": "ATOMSHB003-O",
     "device_name": "Shinobi II",
     "rma_type": " Regular",
     "stock_type": "B-Stock",
@@ -2603,12 +2603,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_zvs7oe",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_w85e7t",
+    "entry_date": "2025-10-27",
     "ticket_id": "220756",
     "first_name": "Tim",
     "last_name": "Cummins",
@@ -2636,12 +2636,12 @@
     "replacement_tracking": "Note: Please don’t be confused — this is the September case. We had requested the device to be returned under this tracking number.",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_6tbj5i",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_es1wxk",
+    "entry_date": "2025-10-27",
     "ticket_id": "223505",
     "first_name": "Alvin",
     "last_name": "Turner",
@@ -2657,7 +2657,7 @@
     "postcode": "75054",
     "product_with_fault": "ATOMNJAV01",
     "serial_number": "K1994NJV50H37",
-    "product_sku": "ATOMNJA004-R",
+    "product_sku": "ATOMNJA004-R-O",
     "device_name": "Ninja V",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2669,12 +2669,12 @@
     "replacement_tracking": "1ZE408H20300339058",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_cqlcwr",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_zb5gkk",
+    "entry_date": "2025-10-28",
     "ticket_id": "223226",
     "first_name": "Tristan",
     "last_name": "Bruno",
@@ -2690,7 +2690,7 @@
     "postcode": "91303",
     "product_with_fault": "ATOMSHGU01",
     "serial_number": "O3A9SHOU50C78",
-    "product_sku": "ATOMSHGU01-B",
+    "product_sku": "ATOMSHGU01-B-O",
     "device_name": "Shogun Ultra",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2702,12 +2702,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_6oe9g5",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_3m7vgb",
+    "entry_date": "2025-10-28",
     "ticket_id": "218358",
     "first_name": "Danny",
     "last_name": "Bielli",
@@ -2735,12 +2735,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_ofxgdx",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_frckfa",
+    "entry_date": "2025-10-29",
     "ticket_id": "223510",
     "first_name": "Frank",
     "last_name": "Sladek",
@@ -2756,7 +2756,7 @@
     "postcode": "91406",
     "product_with_fault": "ATOMSHG002",
     "serial_number": "O2A9SH0151B04",
-    "product_sku": "ATOMSHGU01-B",
+    "product_sku": "ATOMSHGU01-B-O",
     "device_name": "Shogun",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2768,12 +2768,12 @@
     "replacement_tracking": "1ZE408H20319908390",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_e2nbd0",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_ixk9na",
+    "entry_date": "2025-10-31",
     "ticket_id": "223771",
     "first_name": "Frederick",
     "last_name": "Roe",
@@ -2789,7 +2789,7 @@
     "postcode": "61611",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O8A9SHB254J87",
-    "product_sku": "ATOMSHB003-R",
+    "product_sku": "ATOMSHB003-R-O",
     "device_name": "Shinobi II",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2801,12 +2801,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_22b7z9",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_kfk4be",
+    "entry_date": "2025-10-31",
     "ticket_id": "220407",
     "first_name": "Matt",
     "last_name": "Childers",
@@ -2834,12 +2834,12 @@
     "replacement_tracking": "Note: Please don’t be confused — this is the September case. We had requested the device to be returned under this tracking number.",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_muw9en",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_u4nvbn",
+    "entry_date": "2025-10-31",
     "ticket_id": "223813",
     "first_name": "JESSICA ",
     "last_name": "ORDONEZ",
@@ -2867,12 +2867,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_qk9stn",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_de1xg7",
+    "entry_date": "2025-10-31",
     "ticket_id": "223632",
     "first_name": "JESSICA ",
     "last_name": "ORDONEZ",
@@ -2900,12 +2900,12 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   },
   {
-    "id": "rma_1763382353603_qyx4y5",
-    "entry_date": "2025-11-17",
+    "id": "rma_1763391935209_7m5mw3",
+    "entry_date": "2025-10-31",
     "ticket_id": "223755",
     "first_name": "Kevin",
     "last_name": "Gallant",
@@ -2921,7 +2921,7 @@
     "postcode": "38125",
     "product_with_fault": "ATOMSHB003",
     "serial_number": "O8A9SHB253J47",
-    "product_sku": "ATOMSHB003-R",
+    "product_sku": "ATOMSHB003-R-O",
     "device_name": "Shinobi II",
     "rma_type": " Regular",
     "stock_type": "D-Stock",
@@ -2933,7 +2933,7 @@
     "replacement_tracking": "",
     "category": "",
     "organization": "",
-    "created_at": "2025-11-17T12:25:53.599Z",
-    "updated_at": "2025-11-17T12:25:53.599Z"
+    "created_at": "2025-11-17T15:05:35.208Z",
+    "updated_at": "2025-11-17T15:05:35.208Z"
   }
 ]
